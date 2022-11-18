@@ -51,7 +51,7 @@ git clone https://github.com/thinktip/luci-theme-neobird.git package/luci-theme-
 rm -rf feeds/packages/net/mosdns
 rm -rf feeds/packages/net/smartdns
 # rm -rf feeds/luci/themes/luci-theme-argon
-rm -rf feeds/packages/multimedia//aliyundrive-webdav
+rm -rf feeds/packages/multimedia/aliyundrive-webdav
 rm -rf feeds/packages/multimedia/UnblockNeteaseMusic
 rm -rf feeds/luci/applications/luci-app-unblockmusic
 rm -rf feeds/packages/multimedia/UnblockNeteaseMusic-Go
