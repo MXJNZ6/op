@@ -110,7 +110,7 @@ jobs:
         allowUpdates: true
         tag: ${{ env.FILE_NAME }}
         commit: main
-        token: ${{ secrets.GITHUB_TOKEN }}
+        token: ${{ secrets.RELEASES_TOKEN }}
         body: |
           This is OpenWrt firmware for ${{ env.FILE_NAME }}
         artifacts: ${{ env.FIRMWARE }}/*
