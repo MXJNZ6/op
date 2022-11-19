@@ -106,7 +106,7 @@ jobs:
         name: R${{ env.DATE }} for ${{ env.FILE_NAME }}
         allowUpdates: true
         tag: ${{ env.FILE_NAME }}
-        commit: main
+        commit: master
         token: ${{ secrets.GITHUB_TOKEN }}
         body: |
           This is OpenWrt firmware for ${{ env.FILE_NAME }}
