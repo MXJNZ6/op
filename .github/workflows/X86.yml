@@ -3,8 +3,8 @@ name: Build OpenWrt_X86
 on:
   repository_dispatch:
   workflow_dispatch:
-#  schedule:
-#   - cron: 0 16 */2 * *
+  schedule:
+   - cron: 0 16 */7 * *
 
 env:
   REPO_URL: https://github.com/coolsnowwolf/lede
