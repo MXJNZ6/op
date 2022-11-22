@@ -3,8 +3,8 @@ name: Build OpenWrt_Aarch64
 on:
   repository_dispatch:
   workflow_dispatch:
-#  schedule:
-#   - cron: 0 16 */2 * *
+  schedule:
+   - cron: 30 23 ? * FRI
 
 env:
   REPO_URL: https://github.com/coolsnowwolf/lede
