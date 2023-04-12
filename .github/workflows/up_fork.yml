@@ -70,19 +70,6 @@ jobs:
           force: true
           tags: true
 
- sub-web:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: TobKed/github-forks-sync-action@master
-        with:
-          github_token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
-          upstream_repository: CareyWang/sub-web
-          target_repository: MXJNZ6/sub-web
-          upstream_branch: master
-          target_branch: master
-          force: true
-          tags: true
-
  techxuexi-js:
     runs-on: ubuntu-latest
     steps:
