@@ -12,7 +12,7 @@ on:
         default: 'false'
 
 env:
-  REPO_URL: https://github.com/coolsnowwolf/lede
+  REPO_URL: https://github.com/1715173329/imoutowrt
   REPO_BRANCH: master
   CONFIG_FILE: MI3.config
   DIY_SH: MI3.sh
