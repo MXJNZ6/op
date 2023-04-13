@@ -12,8 +12,8 @@ on:
         default: 'false'
 
 env:
-  REPO_URL: https://github.com/Lienol/openwrt
-  REPO_BRANCH: 19.07
+  REPO_URL: https://github.com/x-wrt/x-wrt
+  REPO_BRANCH: master
   CONFIG_FILE: MI3.config
   DIY_SH: MI3.sh
   UPLOAD_FIRMWARE: true
