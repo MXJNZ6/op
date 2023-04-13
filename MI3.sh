@@ -10,12 +10,8 @@
 # Description: OpenWrt DIY script part 1 (Before Update feeds)
 #
 
-# 添加源
-sed -i '$a src-git helloworld https://github.com/fw876/helloworld' feeds.conf.default
-
 
 # 修改主机名字，把Unicorn修改你喜欢的就行（不能纯数字或者使用中文）
-sed -i "/uci commit system/i\uci set system.@system[0].hostname='Unicorn'" package/lean/default-settings/files/zzz-default-settings
 sed -i "s/hostname='OpenWrt'/hostname='Unicorn'/g" ./package/base-files/files/bin/config_generate
 
 git clone https://github.com/thinktip/luci-theme-neobird.git package/luci-theme-neobird
