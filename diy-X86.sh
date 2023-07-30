@@ -38,6 +38,8 @@ git clone https://github.com/UnblockNeteaseMusic/luci-app-unblockneteasemusic.gi
 # luci-app-argon-config
 # git clone https://github.com/jerrykuku/luci-app-argon-config.git package/luci-app-argon-config
 sed -i 's/system/services/g'  feeds/luci/applications/luci-app-argon-config/luasrc/controller/argon-config.lua
+# luci-app-design-config
+sed -i 's/system/services/g'  feeds/luci/applications/luci-app-design-config/luasrc/controller/*.lua
 
 # git clone -b 18.06 https://github.com/jerrykuku/luci-theme-argon.git package/luci-theme-argon
 git clone https://github.com/thinktip/luci-theme-neobird.git package/luci-theme-neobird
