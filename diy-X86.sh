@@ -96,7 +96,7 @@ sed -i 's/services/nas/g' package/luci-app-aliyundrive-webdav/luci-app-aliyundri
 # 调整upnp到网络菜单
 sed -i 's/services/network/g' feeds/luci/applications/luci-app-upnp/luasrc/controller/*.lua
 sed -i 's/services/network/g' feeds/luci/applications/luci-app-upnp/luasrc/model/cbi/upnp/*.lua
-sed -i 's/services/network/g' feeds/luci/applications/luci-app-upnp/luasrc/view/*.lua
+sed -i 's/services/network/g' feeds/luci/applications/luci-app-upnp/luasrc/view/*.htm
 
 # 修改插件名字
 sed -i 's/"阿里云盘 WebDAV"/"阿里云盘"/g' package/luci-app-aliyundrive-webdav/luci-app-aliyundrive-webdav/po/zh-cn/aliyundrive-webdav.po
