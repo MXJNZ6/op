@@ -71,7 +71,7 @@ jobs:
           tags: true
 
  over:
-    needs: [lede,freenom-py,freenom,reader,ax1800,techxuexi-js]
+    needs: [lede,freenom-py,freenom,ax1800,techxuexi-js]
     runs-on: ubuntu-latest
     steps:
 
