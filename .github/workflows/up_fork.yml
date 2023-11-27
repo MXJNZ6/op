@@ -44,18 +44,18 @@ jobs:
           force: true
           tags: true
 
- ax1800:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: TobKed/github-forks-sync-action@master
-        with:
-          github_token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
-          upstream_repository: coolsnowwolf/openwrt-gl-ax1800
-          target_repository: MXJNZ6/openwrt-gl-ax1800
-          upstream_branch: master
-          target_branch: master
-          force: true
-          tags: true
+# ax1800:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: TobKed/github-forks-sync-action@master
+#        with:
+#          github_token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
+#          upstream_repository: coolsnowwolf/openwrt-gl-ax1800
+#          target_repository: MXJNZ6/openwrt-gl-ax1800
+#          upstream_branch: master
+#          target_branch: master
+#          force: true
+#          tags: true
 
  techxuexi-js:
     runs-on: ubuntu-latest
@@ -71,7 +71,7 @@ jobs:
           tags: true
 
  over:
-    needs: [lede,freenom-py,freenom,ax1800,techxuexi-js]
+    needs: [lede,freenom-py,freenom,techxuexi-js]
     runs-on: ubuntu-latest
     steps:
 
