@@ -11,9 +11,9 @@
 #
 
 # 添加源
-# sed -i '$a src-git helloworld https://github.com/fw876/helloworld' feeds.conf.default
-sed -i '$a src-git xiaorouji https://github.com/xiaorouji/openwrt-passwall' feeds.conf.default
-sed -i '$a src-git passwall https://github.com/xiaorouji/openwrt-passwall;luci' feeds.conf.default
+sed -i '$a src-git helloworld https://github.com/fw876/helloworld;main' feeds.conf.default
+sed -i '$a src-git xiaorouji https://github.com/xiaorouji/openwrt-passwall-packages' feeds.conf.default
+sed -i '$a src-git passwall https://github.com/xiaorouji/openwrt-passwall' feeds.conf.default
 
 # 切换内核版本
 # sed -i 's/KERNEL_PATCHVER:=5.15/KERNEL_PATCHVER:=5.4/g' ./target/linux/x86/Makefile
