@@ -45,13 +45,12 @@ sed -i 's/system/services/g'  feeds/luci/applications/luci-app-design-config/lua
 git clone https://github.com/thinktip/luci-theme-neobird.git package/luci-theme-neobird
 # git clone https://github.com/iwrt/luci-app-ikoolproxy.git package/luci-app-ikoolproxy
 # git clone https://github.com/zxlhhyccc/luci-app-v2raya package/luci-app-v2raya
-git clone  https://github.com/gdy666/luci-app-lucky.git package/lucky
+# git clone  https://github.com/gdy666/luci-app-lucky.git package/lucky
 
 # Update feeds
 ./scripts/feeds update -a
 
 # 删除包
-rm -rf feeds/packages/net/mosdns
 # rm -rf feeds/luci/themes/luci-theme-argon
 # rm -rf feeds/luci/applications/luci-app-mosdns
 rm -rf feeds/packages/multimedia/aliyundrive-webdav
