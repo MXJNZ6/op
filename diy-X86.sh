@@ -40,7 +40,7 @@ sed -i 's/system/services/g'  feeds/luci/applications/luci-app-argon-config/luas
 sed -i 's/system/services/g'  feeds/luci/applications/luci-app-design-config/luasrc/controller/*.lua
 
 # git clone -b 18.06 https://github.com/jerrykuku/luci-theme-argon.git package/luci-theme-argon
-git clone -b openwrt-18.06 https://github.com/zxlhhyccc/luci-app-v2raya package/luci-app-v2raya.git
+git clone -b 18.06 https://github.com/zxlhhyccc/luci-app-v2raya package/luci-app-v2raya.git
 # git clone  https://github.com/gdy666/luci-app-lucky.git package/lucky
 
 # Update feeds
