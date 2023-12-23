@@ -31,8 +31,6 @@ svn co https://github.com/Lienol/openwrt-package/trunk/luci-app-filebrowser pack
 
 # git clone https://github.com/sbwml/luci-app-mosdns package/mosdns
 # git clone https://github.com/sbwml/openwrt-alist.git package/openwrt-alist
-# git clone https://github.com/jerrykuku/luci-app-vssr.git  package/luci-app-vssr
-# git clone https://github.com/jerrykuku/lua-maxminddb.git package/lua-maxminddb
 git clone https://github.com/UnblockNeteaseMusic/luci-app-unblockneteasemusic.git package/luci-app-unblockneteasemusic
 
 # luci-app-argon-config
@@ -43,7 +41,6 @@ sed -i 's/system/services/g'  feeds/luci/applications/luci-app-design-config/lua
 
 # git clone -b 18.06 https://github.com/jerrykuku/luci-theme-argon.git package/luci-theme-argon
 git clone https://github.com/thinktip/luci-theme-neobird.git package/luci-theme-neobird
-# git clone https://github.com/iwrt/luci-app-ikoolproxy.git package/luci-app-ikoolproxy
 # git clone https://github.com/zxlhhyccc/luci-app-v2raya package/luci-app-v2raya
 # git clone  https://github.com/gdy666/luci-app-lucky.git package/lucky
 
@@ -63,7 +60,7 @@ rm -rf feeds/luci/applications/luci-app-aliyundrive-webdav
 ./scripts/feeds install -a
 
 # 修改 neobird 为默认主题,可根据你喜欢的修改成其他的（不选择那些会自动改变为默认主题的主题才有效果）
-sed -i 's/luci-theme-bootstrap/luci-theme-neobird/g' feeds/luci/collections/luci/Makefile
+# sed -i 's/luci-theme-bootstrap/luci-theme-neobird/g' feeds/luci/collections/luci/Makefile
 
 # 调整VPN服务到VPN菜单
 # v2ray服务
