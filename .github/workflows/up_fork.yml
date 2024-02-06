@@ -10,6 +10,7 @@ jobs:
     steps:
       - uses: TobKed/github-forks-sync-action@master
         with:
+          using: 'node20'
           github_token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
           upstream_repository: coolsnowwolf/lede
           target_repository: MXJNZ6/lede
