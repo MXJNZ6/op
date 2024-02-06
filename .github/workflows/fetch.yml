@@ -1,0 +1,21 @@
+name: Merge upstream branches
+on:
+  schedule:
+    - cron:  '30 0 ? * MON'
+  workflow_dispatch:
+  
+jobs:
+  lede:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge upstream
+        run: |
+          git config --global user.name 'MXJNZ6'
+          git config --global user.email 'MXJNZ6'
+          git config --global credential.helper store
+          git clone https://${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}@github.com/MXJNZ6/lede.git tmp
+          cd tmp
+          git remote add upstream https://${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}@github.com/coolsnowwolf/lede.git
+          git fetch upstream
+          git merge upstream/master
+          git push origin master
