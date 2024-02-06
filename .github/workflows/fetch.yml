@@ -1,11 +1,11 @@
 name: Merge upstream branches
 on:
+  workflow_dispatch:
   schedule:
     - cron:  '30 0 ? * MON'
-  workflow_dispatch:
   
 jobs:
-  lede:
+ job1:
     runs-on: ubuntu-latest
     steps:
       - name: Merge upstream
@@ -19,3 +19,60 @@ jobs:
           git fetch upstream
           git merge upstream/master
           git push origin master
+
+ job2:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge upstream
+        run: |
+          git config --global user.name 'MXJNZ6'
+          git config --global user.email 'MXJNZ6'
+          git config --global credential.helper store
+          git clone https://${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}@github.com/MXJNZ6/freenom.git tmp
+          cd tmp
+          git remote add upstream https://${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}@github.com/luolongfei/freenom.git
+          git fetch upstream
+          git merge upstream/main
+          git push origin main
+          
+ job3:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge upstream
+        run: |
+          git config --global user.name 'MXJNZ6'
+          git config --global user.email 'MXJNZ6'
+          git config --global credential.helper store
+          git clone https://${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}@github.com/MXJNZ6/WeChatMsg.git tmp
+          cd tmp
+          git remote add upstream https://${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}@github.com/LC044/WeChatMsg.git
+          git fetch upstream
+          git merge upstream/master
+          git push origin master
+
+ job4:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge upstream
+        run: |
+          git config --global user.name 'MXJNZ6'
+          git config --global user.email 'MXJNZ6'
+          git config --global credential.helper store
+          git clone https://${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}@github.com/MXJNZ6/techxuexi-js.git tmp
+          cd tmp
+          git remote add upstream https://${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}@github.com/TechXueXi/techxuexi-js.git
+          git fetch upstream
+          git merge upstream/main
+          git push origin main
+
+ job5:
+    runs-on: ubuntu-latest
+    steps:
+
+     - name: Delete workflow runs
+       uses: Mattraks/delete-workflow-runs@v2
+       with:
+         token: ${{ github.token }}
+         repository: ${{ github.repository }}
+         retain_days: 0
+         keep_minimum_runs: 1
