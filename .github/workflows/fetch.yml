@@ -5,7 +5,7 @@ on:
     - cron:  '30 0 ? * MON'
   
 jobs:
- job1:
+  lede:
     runs-on: ubuntu-latest
     steps:
       - name: Merge upstream
@@ -20,7 +20,7 @@ jobs:
           git merge upstream/master
           git push origin master
 
- job2:
+  freenom:
     runs-on: ubuntu-latest
     steps:
       - name: Merge upstream
@@ -35,7 +35,7 @@ jobs:
           git merge upstream/main
           git push origin main
           
- job3:
+  WeChatMsg:
     runs-on: ubuntu-latest
     steps:
       - name: Merge upstream
@@ -50,7 +50,7 @@ jobs:
           git merge upstream/master
           git push origin master
 
- job4:
+  techxuexi-js:
     runs-on: ubuntu-latest
     steps:
       - name: Merge upstream
@@ -65,14 +65,14 @@ jobs:
           git merge upstream/main
           git push origin main
 
- job5:
+  over:
+    needs: [lede,freenom,WeChatMsg,techxuexi-js]
     runs-on: ubuntu-latest
     steps:
-
-     - name: Delete workflow runs
-       uses: Mattraks/delete-workflow-runs@v2
-       with:
-         token: ${{ github.token }}
-         repository: ${{ github.repository }}
-         retain_days: 0
-         keep_minimum_runs: 1
+      - name: Delete workflow runs
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          retain_days: 0
+          keep_minimum_runs: 1
