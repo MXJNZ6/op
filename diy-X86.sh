@@ -10,118 +10,79 @@
 # Description: OpenWrt DIY script part 1 (Before Update feeds)
 #
 
+echo "开始 DIY 配置……"
+echo "========================="
+
 # 添加源
 # sed -i '$a src-git helloworld https://github.com/fw876/helloworld;main' feeds.conf.default
 #sed -i '$a src-git helloworld https://github.com/fw876/helloworld' feeds.conf.default
 #sed -i '$a src-git xiaorouji https://github.com/xiaorouji/openwrt-passwall-packages' feeds.conf.default
 #sed -i '$a src-git passwall https://github.com/xiaorouji/openwrt-passwall' feeds.conf.default
 
-echo "开始 DIY 配置……"
-echo "========================="
-
-function merge_package(){
-    repo=`echo $1 | rev | cut -d'/' -f 1 | rev`
-    pkg=`echo $2 | rev | cut -d'/' -f 1 | rev`
-    # find package/ -follow -name $pkg -not -path "package/custom/*" | xargs -rt rm -rf
-    git clone --depth=1 --single-branch $1
-    mv $2 package/custom/
-    rm -rf $repo
-}
-function drop_package(){
-    find package/ -follow -name $1 -not -path "package/custom/*" | xargs -rt rm -rf
-}
-function merge_feed(){
-    if [ ! -d "feed/$1" ]; then
-        echo >> feeds.conf.default
-        echo "src-git $1 $2" >> feeds.conf.default
-    fi
-    ./scripts/feeds update $1
-    ./scripts/feeds install -a -p $1
-}
-rm -rf package/custom; mkdir package/custom
-
 # 切换内核版本
 # sed -i 's/KERNEL_PATCHVER:=5.15/KERNEL_PATCHVER:=5.4/g' ./target/linux/x86/Makefile
 
-merge_package https://github.com/vernesong/OpenClash OpenClash/luci-app-openclash
+# 修改openwrt登陆地址,把下面的10.10.10.254修改成你需要的
+sed -i 's/192.168.1.1/10.10.10.254/g' package/base-files/files/bin/config_generate
+
+# 修改主机名字，把Unicorn修改成你喜欢的（不能纯数字或者使用中文）
+sed -i "/uci commit system/i\uci set system.@system[0].hostname='Unicorn'" package/lean/default-settings/files/zzz-default-settings
+sed -i "s/hostname='OpenWrt'/hostname='Unicorn'/g" ./package/base-files/files/bin/config_generate
+
+function merge_package() {
+    # 参数1是分支名,参数2是库地址,参数3是所有文件下载到指定路径。
+    # 同一个仓库下载多个文件夹直接在后面跟文件名或路径，空格分开。
+    if [[ $# -lt 3 ]]; then
+        echo "Syntax error: [$#] [$*]" >&2
+        return 1
+    fi
+    trap 'rm -rf "$tmpdir"' EXIT
+    branch="$1" curl="$2" target_dir="$3" && shift 3
+    rootdir="$PWD"
+    localdir="$target_dir"
+    [ -d "$localdir" ] || mkdir -p "$localdir"
+    tmpdir="$(mktemp -d)" || exit 1
+    git clone -b "$branch" --depth 1 --filter=blob:none --sparse "$curl" "$tmpdir"
+    cd "$tmpdir"
+    git sparse-checkout init --cone
+    git sparse-checkout set "$@"
+    # 使用循环逐个移动文件夹
+    for folder in "$@"; do
+        mv -f "$folder" "$rootdir/$localdir"
+    done
+    cd "$rootdir"
+}
+merge_package master https://github.com/vernesong/OpenClash /lede/package/openwrt-packages luci-app-openclash
+merge_package v5 https://github.com/sbwml/luci-app-mosdns /lede/package/openwrt-packages luci-app-mosdns mosdns
+merge_package main https://github.com/Lienol/openwrt-package /lede/package/openwrt-packages luci-app-filebrowser
+merge_package main https://github.com/xiaorouji/openwrt-passwall /lede/package/openwrt-packages luci-app-passwall
+merge_package master https://github.com/v2rayA/v2raya-openwrt /lede/package/openwrt-packages v2raya luci-app-v2raya
+merge_package master https://github.com/fw876/helloworld /lede/package/openwrt-packages luci-app-ssr-plus dns2tcp lua-neturl mosdns redsocks2 shadow-tls shadowsocksr-libev tuic-client v2ray-geodata xray-core xray-plugin
+merge_package main https://github.com/xiaorouji/openwrt-passwall-packages /lede/package/openwrt-packages brook chinadns-ng dns2socks gn hysteria ipt2socks microsocks naiveproxy pdnsd-alt shadowsocks-rust simple-obfs sing-box ssocks tcping trojan-go trojan-plus trojan v2ray-core v2ray-plugin
+
 # 编译 po2lmo (如果有po2lmo可跳过)
 pushd package/custom/luci-app-openclash/tools/po2lmo
 make && sudo make install
 popd
 
-merge_package https://github.com/xiaorouji/openwrt-passwall openwrt-passwall/luci-app-passwall
-merge_package https://github.com/fw876/helloworld helloworld/luci-app-ssr-plus
-merge_package https://github.com/xiaorouji/openwrt-passwall-packages openwrt-passwall-packages/brook
-merge_package https://github.com/xiaorouji/openwrt-passwall-packages openwrt-passwall-packages/chinadns-ng
-merge_package https://github.com/xiaorouji/openwrt-passwall-packages openwrt-passwall-packages/dns2socks
-merge_package https://github.com/fw876/helloworld helloworld/dns2tcp
-merge_package https://github.com/xiaorouji/openwrt-passwall-packages openwrt-passwall-packages/gn
-merge_package https://github.com/xiaorouji/openwrt-passwall-packages openwrt-passwall-packages/hysteria
-merge_package https://github.com/xiaorouji/openwrt-passwall-packages openwrt-passwall-packages/ipt2socks
-merge_package https://github.com/fw876/helloworld helloworld/lua-neturl
-merge_package https://github.com/xiaorouji/openwrt-passwall-packages openwrt-passwall-packages/microsocks
-merge_package https://github.com/fw876/helloworld helloworld/mosdns
-merge_package https://github.com/xiaorouji/openwrt-passwall-packages openwrt-passwall-packages/naiveproxy
-merge_package https://github.com/fw876/helloworld helloworld/redsocks2
-merge_package https://github.com/fw876/helloworld helloworld/shadow-tls
-merge_package https://github.com/xiaorouji/openwrt-passwall-packages openwrt-passwall-packages/pdnsd-alt
-merge_package https://github.com/xiaorouji/openwrt-passwall-packages openwrt-passwall-packages/shadowsocks-rust
-merge_package https://github.com/fw876/helloworld helloworld/shadowsocksr-libev
-merge_package https://github.com/xiaorouji/openwrt-passwall-packages openwrt-passwall-packages/simple-obfs
-merge_package https://github.com/xiaorouji/openwrt-passwall-packages openwrt-passwall-packages/sing-box
-merge_package https://github.com/xiaorouji/openwrt-passwall-packages openwrt-passwall-packages/ssocks
-merge_package https://github.com/xiaorouji/openwrt-passwall-packages openwrt-passwall-packages/tcping
-merge_package https://github.com/xiaorouji/openwrt-passwall-packages openwrt-passwall-packages/trojan-go
-merge_package https://github.com/xiaorouji/openwrt-passwall-packages openwrt-passwall-packages/trojan-plus
-merge_package https://github.com/xiaorouji/openwrt-passwall-packages openwrt-passwall-packages/trojan
-merge_package https://github.com/fw876/helloworld helloworld/tuic-client
-merge_package https://github.com/xiaorouji/openwrt-passwall-packages openwrt-passwall-packages/v2ray-core
-merge_package https://github.com/fw876/helloworld helloworld/v2ray-geodata
-merge_package https://github.com/xiaorouji/openwrt-passwall-packages openwrt-passwall-packages/v2ray-plugin
-merge_package https://github.com/fw876/helloworld helloworld/xray-core
-merge_package https://github.com/fw876/helloworld helloworld/xray-plugin
-
-# filebrowser
-merge_package https://github.com/Lienol/openwrt-package openwrt-package/luci-app-filebrowser
-
-# v2raya
-merge_package https://github.com/v2rayA/v2raya-openwrt v2raya-openwrt/v2raya
-merge_package https://github.com/v2rayA/v2raya-openwrt v2raya-openwrt/luci-app-v2raya
-
-# svn co https://github.com/vernesong/OpenClash/trunk/luci-app-openclash package/luci-app-openclash
-# svn co https://github.com/Lienol/openwrt-package/trunk/luci-app-filebrowser package/luci-app-filebrowser
-
 # git clone https://github.com/sbwml/luci-app-mosdns package/mosdns
+# git clone  https://github.com/gdy666/luci-app-lucky.git package/lucky
 # git clone https://github.com/sbwml/openwrt-alist.git package/openwrt-alist
 git clone https://github.com/UnblockNeteaseMusic/luci-app-unblockneteasemusic.git package/luci-app-unblockneteasemusic
 
-# git clone -b 18.06 https://github.com/jerrykuku/luci-theme-argon.git package/luci-theme-argon
-# git clone  https://github.com/gdy666/luci-app-lucky.git package/lucky
-
-# 修改openwrt登陆地址,把下面的10.10.10.254修改成你想要的就可以了
-sed -i 's/192.168.1.1/10.10.10.254/g' package/base-files/files/bin/config_generate
-
-# 修改主机名字，把Unicorn修改你喜欢的就行（不能纯数字或者使用中文）
-sed -i "/uci commit system/i\uci set system.@system[0].hostname='Unicorn'" package/lean/default-settings/files/zzz-default-settings
-sed -i "s/hostname='OpenWrt'/hostname='Unicorn'/g" ./package/base-files/files/bin/config_generate
-
 # Update feeds
 ./scripts/feeds update -a
+
+# 修改 xxx 为默认主题,可根据你喜欢的修改成其他的（不选择那些会自动改变为默认主题的主题才有效果）
+# sed -i 's/luci-theme-bootstrap/luci-theme-xxx/g' feeds/luci/collections/luci/Makefile
 
 # 删除包
 # rm -rf feeds/luci/themes/luci-theme-argon
 rm -rf feeds/packages/multimedia/UnblockNeteaseMusic
 rm -rf feeds/luci/applications/luci-app-unblockmusic
 rm -rf feeds/packages/multimedia/UnblockNeteaseMusic-Go
-
-# mosdns
 rm -rf feeds/packages/net/mosdns
 rm -rf feeds/luci/applications/luci-app-mosdns
-merge_package https://github.com/sbwml/luci-app-mosdns luci-app-mosdns
-merge_package https://github.com/sbwml/luci-app-mosdns luci-app-mosdns/mosdns
-
-# 修改 xxx 为默认主题,可根据你喜欢的修改成其他的（不选择那些会自动改变为默认主题的主题才有效果）
-# sed -i 's/luci-theme-bootstrap/luci-theme-xxx/g' feeds/luci/collections/luci/Makefile
 
 # luci-app-argon-config
 # git clone https://github.com/jerrykuku/luci-app-argon-config.git package/luci-app-argon-config
@@ -169,7 +130,6 @@ sed -i 's/services/network/g' feeds/luci/applications/luci-app-upnp/luasrc/view/
 sed -i 's/"阿里云盘 WebDAV"/"阿里云盘"/g' package/luci-app-aliyundrive-webdav/luci-app-aliyundrive-webdav/po/zh-cn/aliyundrive-webdav.po
 sed -i 's/WireGuard 状态/WireGuard/g' feeds/luci/applications/luci-app-wireguard/po/zh-cn/wireguard.po
 
-./scripts/feeds update -a
 ./scripts/feeds install -a
 
 echo "========================="
