@@ -65,7 +65,12 @@ pushd package/custom/luci-app-openclash/tools/po2lmo
 make && sudo make install
 popd
 
-# git clone https://github.com/sbwml/luci-app-mosdns package/mosdns
+# drop mosdns and v2ray-geodata packages that come with the source
+find ./ | grep Makefile | grep v2ray-geodata | xargs rm -f
+find ./ | grep Makefile | grep mosdns | xargs rm -f
+git clone https://github.com/sbwml/luci-app-mosdns -b v5 package/mosdns
+git clone https://github.com/sbwml/v2ray-geodata package/v2ray-geodata
+
 # git clone  https://github.com/gdy666/luci-app-lucky.git package/lucky
 # git clone https://github.com/sbwml/openwrt-alist.git package/openwrt-alist
 git clone https://github.com/UnblockNeteaseMusic/luci-app-unblockneteasemusic.git package/luci-app-unblockneteasemusic
