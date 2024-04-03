@@ -52,13 +52,13 @@ function merge_package() {
     done
     cd "$rootdir"
 }
-merge_package master https://github.com/vernesong/OpenClash /lede/package/openwrt-packages luci-app-openclash
-merge_package v5 https://github.com/sbwml/luci-app-mosdns /lede/package/openwrt-packages luci-app-mosdns mosdns
-merge_package main https://github.com/Lienol/openwrt-package /lede/package/openwrt-packages luci-app-filebrowser
-merge_package main https://github.com/xiaorouji/openwrt-passwall /lede/package/openwrt-packages luci-app-passwall
-merge_package master https://github.com/v2rayA/v2raya-openwrt /lede/package/openwrt-packages v2raya luci-app-v2raya
-merge_package master https://github.com/fw876/helloworld /lede/package/openwrt-packages luci-app-ssr-plus dns2tcp lua-neturl mosdns redsocks2 shadow-tls shadowsocksr-libev tuic-client v2ray-geodata xray-core xray-plugin
-merge_package main https://github.com/xiaorouji/openwrt-passwall-packages /lede/package/openwrt-packages brook chinadns-ng dns2socks gn hysteria ipt2socks microsocks naiveproxy pdnsd-alt shadowsocks-rust simple-obfs sing-box ssocks tcping trojan-go trojan-plus trojan v2ray-core v2ray-plugin
+merge_package master https://github.com/vernesong/OpenClash /package/openwrt-packages luci-app-openclash
+merge_package v5 https://github.com/sbwml/luci-app-mosdns /package/openwrt-packages luci-app-mosdns mosdns
+merge_package main https://github.com/Lienol/openwrt-package /package/openwrt-packages luci-app-filebrowser
+merge_package main https://github.com/xiaorouji/openwrt-passwall /package/openwrt-packages luci-app-passwall
+merge_package master https://github.com/v2rayA/v2raya-openwrt /package/openwrt-packages v2raya luci-app-v2raya
+merge_package master https://github.com/fw876/helloworld /package/openwrt-packages luci-app-ssr-plus dns2tcp lua-neturl mosdns redsocks2 shadow-tls shadowsocksr-libev tuic-client v2ray-geodata xray-core xray-plugin
+merge_package main https://github.com/xiaorouji/openwrt-passwall-packages /package/openwrt-packages brook chinadns-ng dns2socks gn hysteria ipt2socks microsocks naiveproxy pdnsd-alt shadowsocks-rust simple-obfs sing-box ssocks tcping trojan-go trojan-plus trojan v2ray-core v2ray-plugin
 
 # 编译 po2lmo (如果有po2lmo可跳过)
 pushd package/custom/luci-app-openclash/tools/po2lmo
