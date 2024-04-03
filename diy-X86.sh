@@ -13,6 +13,27 @@
 echo "开始 DIY 配置……"
 echo "========================="
 
+function merge_package(){
+    repo=`echo $1 | rev | cut -d'/' -f 1 | rev`
+    pkg=`echo $2 | rev | cut -d'/' -f 1 | rev`
+    # find package/ -follow -name $pkg -not -path "package/custom/*" | xargs -rt rm -rf
+    git clone --depth=1 --single-branch $1
+    mv $2 package/custom/
+    rm -rf $repo
+}
+function drop_package(){
+    find package/ -follow -name $1 -not -path "package/custom/*" | xargs -rt rm -rf
+}
+function merge_feed(){
+    if [ ! -d "feed/$1" ]; then
+        echo >> feeds.conf.default
+        echo "src-git $1 $2" >> feeds.conf.default
+    fi
+    ./scripts/feeds update $1
+    ./scripts/feeds install -a -p $1
+}
+rm -rf package/custom; mkdir package/custom
+
 # 添加源
 # sed -i '$a src-git helloworld https://github.com/fw876/helloworld;main' feeds.conf.default
 #sed -i '$a src-git helloworld https://github.com/fw876/helloworld' feeds.conf.default
@@ -29,22 +50,7 @@ sed -i 's/192.168.1.1/10.10.10.254/g' package/base-files/files/bin/config_genera
 sed -i "/uci commit system/i\uci set system.@system[0].hostname='Unicorn'" package/lean/default-settings/files/zzz-default-settings
 sed -i "s/hostname='OpenWrt'/hostname='Unicorn'/g" ./package/base-files/files/bin/config_generate
 
-function merge_package(){
-    # 参数1是分支名,参数2是库地址。所有文件下载到openwrt/package/openwrt-packages路径。
-    # 同一个仓库下载多个文件夹直接在后面跟文件名或路径，空格分开。
-    trap 'rm -rf "$tmpdir"' EXIT
-    branch="$1" curl="$2" && shift 2
-    rootdir="$PWD"
-    localdir=package/openwrt-packages
-    [ -d "$localdir" ] || mkdir -p "$localdir"
-    tmpdir="$(mktemp -d)" || exit 1
-    git clone -b "$branch" --depth 1 --filter=blob:none --sparse "$curl" "$tmpdir"
-    cd "$tmpdir"
-    git sparse-checkout init --cone
-    git sparse-checkout set "$@"
-    mv -f "$@" "$rootdir"/"$localdir" && cd "$rootdir"
-}
-merge_package master https://github.com/vernesong/OpenClash luci-app-openclash
+merge_package https://github.com/vernesong/OpenClash OpenClash/luci-app-openclash
 merge_package main https://github.com/Lienol/openwrt-package luci-app-filebrowser
 merge_package main https://github.com/xiaorouji/openwrt-passwall luci-app-passwall
 # merge_package master https://github.com/v2rayA/v2raya-openwrt v2raya luci-app-v2raya
