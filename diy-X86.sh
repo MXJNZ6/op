@@ -61,7 +61,7 @@ merge_package master https://github.com/fw876/helloworld /package/openwrt-packag
 merge_package main https://github.com/xiaorouji/openwrt-passwall-packages /package/openwrt-packages brook chinadns-ng dns2socks gn hysteria ipt2socks microsocks naiveproxy pdnsd-alt shadowsocks-rust simple-obfs sing-box ssocks tcping trojan-go trojan-plus trojan v2ray-core v2ray-plugin
 
 # 编译 po2lmo (如果有po2lmo可跳过)
-pushd package/custom/luci-app-openclash/tools/po2lmo
+pushd package/openwrt-packages/luci-app-openclash/tools/po2lmo
 make && sudo make install
 popd
 
