@@ -35,10 +35,10 @@ function merge_feed(){
 rm -rf package/custom; mkdir package/custom
 
 # 添加源
-# sed -i '$a src-git helloworld https://github.com/fw876/helloworld;main' feeds.conf.default
-#sed -i '$a src-git helloworld https://github.com/fw876/helloworld' feeds.conf.default
-#sed -i '$a src-git xiaorouji https://github.com/xiaorouji/openwrt-passwall-packages' feeds.conf.default
-#sed -i '$a src-git passwall https://github.com/xiaorouji/openwrt-passwall' feeds.conf.default
+sed -i "/helloworld/d" "feeds.conf.default"
+sed -i '$a src-git helloworld https://github.com/fw876/helloworld.git' feeds.conf.default
+sed -i '$a src-git xiaorouji https://github.com/xiaorouji/openwrt-passwall-packages' feeds.conf.default
+sed -i '$a src-git passwall https://github.com/xiaorouji/openwrt-passwall' feeds.conf.default
 
 # 切换内核版本
 # sed -i 's/KERNEL_PATCHVER:=5.15/KERNEL_PATCHVER:=5.4/g' ./target/linux/x86/Makefile
@@ -51,11 +51,7 @@ sed -i "/uci commit system/i\uci set system.@system[0].hostname='Unicorn'" packa
 sed -i "s/hostname='OpenWrt'/hostname='Unicorn'/g" ./package/base-files/files/bin/config_generate
 
 merge_package https://github.com/vernesong/OpenClash OpenClash/luci-app-openclash
-merge_package main https://github.com/Lienol/openwrt-package luci-app-filebrowser
-merge_package main https://github.com/xiaorouji/openwrt-passwall luci-app-passwall
-# merge_package master https://github.com/v2rayA/v2raya-openwrt v2raya luci-app-v2raya
-merge_package master https://github.com/fw876/helloworld luci-app-ssr-plus dns2tcp lua-neturl mosdns redsocks2 shadow-tls shadowsocksr-libev tuic-client xray-core xray-plugin
-merge_package main https://github.com/xiaorouji/openwrt-passwall-packages brook chinadns-ng dns2socks gn hysteria ipt2socks microsocks naiveproxy pdnsd-alt shadowsocks-rust simple-obfs sing-box ssocks tcping trojan-go trojan-plus trojan v2ray-core v2ray-plugin
+merge_package https://github.com/Lienol/openwrt-package luci-app-filebrowser
 
 # drop mosdns and v2ray-geodata packages that come with the source
 find ./ | grep Makefile | grep v2ray-geodata | xargs rm -f
