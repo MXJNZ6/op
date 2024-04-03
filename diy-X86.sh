@@ -51,11 +51,6 @@ merge_package main https://github.com/xiaorouji/openwrt-passwall luci-app-passwa
 merge_package master https://github.com/fw876/helloworld luci-app-ssr-plus dns2tcp lua-neturl mosdns redsocks2 shadow-tls shadowsocksr-libev tuic-client xray-core xray-plugin
 merge_package main https://github.com/xiaorouji/openwrt-passwall-packages brook chinadns-ng dns2socks gn hysteria ipt2socks microsocks naiveproxy pdnsd-alt shadowsocks-rust simple-obfs sing-box ssocks tcping trojan-go trojan-plus trojan v2ray-core v2ray-plugin
 
-# 编译 po2lmo (如果有po2lmo可跳过)
-pushd /package/openwrt-packages/luci-app-openclash/tools/po2lmo
-make && sudo make install
-popd
-
 # drop mosdns and v2ray-geodata packages that come with the source
 find ./ | grep Makefile | grep v2ray-geodata | xargs rm -f
 find ./ | grep Makefile | grep mosdns | xargs rm -f
