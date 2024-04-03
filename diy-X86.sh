@@ -35,7 +35,6 @@ function merge_feed(){
 rm -rf package/custom; mkdir package/custom
 
 # 添加源
-sed -i "/helloworld/d" "feeds.conf.default"
 sed -i '$a src-git helloworld https://github.com/fw876/helloworld.git' feeds.conf.default
 sed -i '$a src-git xiaorouji https://github.com/xiaorouji/openwrt-passwall-packages' feeds.conf.default
 sed -i '$a src-git passwall https://github.com/xiaorouji/openwrt-passwall' feeds.conf.default
