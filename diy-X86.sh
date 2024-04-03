@@ -29,36 +29,27 @@ sed -i 's/192.168.1.1/10.10.10.254/g' package/base-files/files/bin/config_genera
 sed -i "/uci commit system/i\uci set system.@system[0].hostname='Unicorn'" package/lean/default-settings/files/zzz-default-settings
 sed -i "s/hostname='OpenWrt'/hostname='Unicorn'/g" ./package/base-files/files/bin/config_generate
 
-function merge_package() {
-    # 参数1是分支名,参数2是库地址,参数3是所有文件下载到指定路径。
+function merge_package(){
+    # 参数1是分支名,参数2是库地址。所有文件下载到openwrt/package/openwrt-packages路径。
     # 同一个仓库下载多个文件夹直接在后面跟文件名或路径，空格分开。
-    if [[ $# -lt 3 ]]; then
-        echo "Syntax error: [$#] [$*]" >&2
-        return 1
-    fi
     trap 'rm -rf "$tmpdir"' EXIT
-    branch="$1" curl="$2" target_dir="$3" && shift 3
+    branch="$1" curl="$2" && shift 2
     rootdir="$PWD"
-    localdir="$target_dir"
+    localdir=package/openwrt-packages
     [ -d "$localdir" ] || mkdir -p "$localdir"
     tmpdir="$(mktemp -d)" || exit 1
     git clone -b "$branch" --depth 1 --filter=blob:none --sparse "$curl" "$tmpdir"
     cd "$tmpdir"
     git sparse-checkout init --cone
     git sparse-checkout set "$@"
-    # 使用循环逐个移动文件夹
-    for folder in "$@"; do
-        mv -f "$folder" "$rootdir/$localdir"
-    done
-    cd "$rootdir"
+    mv -f "$@" "$rootdir"/"$localdir" && cd "$rootdir"
 }
-merge_package master https://github.com/vernesong/OpenClash /package/openwrt-packages luci-app-openclash
-# merge_package v5 https://github.com/sbwml/luci-app-mosdns /package/openwrt-packages luci-app-mosdns mosdns
-merge_package main https://github.com/Lienol/openwrt-package /package/openwrt-packages luci-app-filebrowser
-merge_package main https://github.com/xiaorouji/openwrt-passwall /package/openwrt-packages luci-app-passwall
-merge_package master https://github.com/v2rayA/v2raya-openwrt /package/openwrt-packages v2raya luci-app-v2raya
-merge_package master https://github.com/fw876/helloworld /package/openwrt-packages luci-app-ssr-plus dns2tcp lua-neturl mosdns redsocks2 shadow-tls shadowsocksr-libev tuic-client xray-core xray-plugin
-merge_package main https://github.com/xiaorouji/openwrt-passwall-packages /package/openwrt-packages brook chinadns-ng dns2socks gn hysteria ipt2socks microsocks naiveproxy pdnsd-alt shadowsocks-rust simple-obfs sing-box ssocks tcping trojan-go trojan-plus trojan v2ray-core v2ray-plugin
+merge_package master https://github.com/vernesong/OpenClash luci-app-openclash
+merge_package main https://github.com/Lienol/openwrt-package luci-app-filebrowser
+merge_package main https://github.com/xiaorouji/openwrt-passwall luci-app-passwall
+merge_package master https://github.com/v2rayA/v2raya-openwrt v2raya luci-app-v2raya
+merge_package master https://github.com/fw876/helloworld luci-app-ssr-plus dns2tcp lua-neturl mosdns redsocks2 shadow-tls shadowsocksr-libev tuic-client xray-core xray-plugin
+merge_package main https://github.com/xiaorouji/openwrt-passwall-packages brook chinadns-ng dns2socks gn hysteria ipt2socks microsocks naiveproxy pdnsd-alt shadowsocks-rust simple-obfs sing-box ssocks tcping trojan-go trojan-plus trojan v2ray-core v2ray-plugin
 
 # 编译 po2lmo (如果有po2lmo可跳过)
 pushd package/openwrt-packages/luci-app-openclash/tools/po2lmo
