@@ -50,7 +50,7 @@ sed -i "/uci commit system/i\uci set system.@system[0].hostname='Unicorn'" packa
 sed -i "s/hostname='OpenWrt'/hostname='Unicorn'/g" ./package/base-files/files/bin/config_generate
 
 merge_package https://github.com/vernesong/OpenClash OpenClash/luci-app-openclash
-merge_package https://github.com/Lienol/openwrt-package luci-app-filebrowser
+merge_package https://github.com/Lienol/openwrt-package openwrt-package/luci-app-filebrowser
 
 # drop mosdns and v2ray-geodata packages that come with the source
 find ./ | grep Makefile | grep v2ray-geodata | xargs rm -f
