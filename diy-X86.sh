@@ -51,11 +51,11 @@ sed -i "s/hostname='OpenWrt'/hostname='Unicorn'/g" ./package/base-files/files/bi
 merge_package https://github.com/vernesong/OpenClash OpenClash/luci-app-openclash
 merge_package https://github.com/Lienol/openwrt-package openwrt-package/luci-app-filebrowser
 
-# drop mosdns and v2ray-geodata packages that come with the source
-find ./ | grep Makefile | grep v2ray-geodata | xargs rm -f
-find ./ | grep Makefile | grep mosdns | xargs rm -f
-git clone https://github.com/sbwml/luci-app-mosdns -b v5 package/mosdns
-git clone https://github.com/sbwml/v2ray-geodata package/v2ray-geodata
+#mosdns
+rm -rf feeds/packages/net/mosdns
+rm -rf feeds/luci/applications/luci-app-mosdns
+git clone -b v5-lua https://github.com/sbwml/luci-app-mosdns package/luci-app-mosdns
+merge_package https://github.com/sbwml/luci-app-mosdns luci-app-mosdns/mosdns
 
 # git clone  https://github.com/gdy666/luci-app-lucky.git package/lucky
 # git clone https://github.com/sbwml/openwrt-alist.git package/openwrt-alist
@@ -72,8 +72,6 @@ git clone https://github.com/UnblockNeteaseMusic/luci-app-unblockneteasemusic.gi
 rm -rf feeds/packages/multimedia/UnblockNeteaseMusic
 rm -rf feeds/luci/applications/luci-app-unblockmusic
 rm -rf feeds/packages/multimedia/UnblockNeteaseMusic-Go
-rm -rf feeds/packages/net/mosdns
-rm -rf feeds/luci/applications/luci-app-mosdns
 
 # luci-app-argon-config
 # git clone https://github.com/jerrykuku/luci-app-argon-config.git package/luci-app-argon-config
