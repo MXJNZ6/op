@@ -31,8 +31,8 @@ rm -rf package/custom; mkdir package/custom
 # sed -i '$a src-git helloworld https://github.com/fw876/helloworld.git' feeds.conf.default
 # sed -i '$a src-git xiaorouji https://github.com/xiaorouji/openwrt-passwall-packages' feeds.conf.default
 # sed -i '$a src-git passwall https://github.com/xiaorouji/openwrt-passwall' feeds.conf.default
-sed -i '$a src-git nas https://github.com/linkease/nas-packages.git;master' feeds.conf.default
-sed -i '$a src-git nas_luci https://github.com/linkease/nas-packages-luci.git;main' feeds.conf.default
+# sed -i '$a src-git nas https://github.com/linkease/nas-packages.git;master' feeds.conf.default
+# sed -i '$a src-git nas_luci https://github.com/linkease/nas-packages-luci.git;main' feeds.conf.default
 
 git clone https://github.com/fw876/helloworld.git package/ssr
 git clone https://github.com/xiaorouji/openwrt-passwall-packages.git package/openwrt-passwall
