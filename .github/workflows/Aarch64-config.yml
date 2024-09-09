@@ -1,6 +1,6 @@
 # config在线生成项目
 
-name: Config_Aarch64
+name: Config_N1
 
 on:
   repository_dispatch:
@@ -14,11 +14,11 @@ on:
 env:
   REPO_URL: https://github.com/coolsnowwolf/lede
   REPO_BRANCH: master
-  CONFIG_FILE: arm64.config
-  DIY_SH: diy-arm64.sh
+  CONFIG_FILE: N1.config
+  DIY_SH: N1.sh
   UPLOAD_FIRMWARE: true
   UPLOAD_RELEASE: false
-  CONFIG: Aarch64
+  CONFIG: N1
   TZ: Asia/Shanghai
   
 jobs:
