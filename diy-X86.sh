@@ -38,6 +38,10 @@ git clone https://github.com/fw876/helloworld.git package/ssr
 git clone https://github.com/xiaorouji/openwrt-passwall-packages.git package/openwrt-passwall
 git clone https://github.com/xiaorouji/openwrt-passwall.git package/passwall
 
+git clone https://github.com/jerrykuku/luci-theme-argon.git  package/luci-theme-argon
+git clone https://github.com/jerrykuku/luci-app-argon-config.git  package/luci-app-argon-config
+git clone -b js https://github.com/sirpdboy/luci-theme-kucat.git  package/luci-theme-kucat
+
 # 切换内核版本
 # sed -i 's/KERNEL_PATCHVER:=5.15/KERNEL_PATCHVER:=5.4/g' ./target/linux/x86/Makefile
 
@@ -57,6 +61,8 @@ rm -rf feeds/luci/applications/luci-app-mosdns
 git clone -b v5-lua https://github.com/sbwml/luci-app-mosdns package/luci-app-mosdns
 merge_package https://github.com/sbwml/luci-app-mosdns luci-app-mosdns/mosdns
 
+git clone https://github.com/linkease/istore.git package/istore
+
 # git clone  https://github.com/gdy666/luci-app-lucky.git package/lucky
 # git clone https://github.com/sbwml/openwrt-alist.git package/openwrt-alist
 git clone https://github.com/UnblockNeteaseMusic/luci-app-unblockneteasemusic.git package/luci-app-unblockneteasemusic
@@ -68,17 +74,16 @@ git clone https://github.com/UnblockNeteaseMusic/luci-app-unblockneteasemusic.gi
 # sed -i 's/luci-theme-bootstrap/luci-theme-xxx/g' feeds/luci/collections/luci/Makefile
 
 # 删除包
-# rm -rf feeds/luci/themes/luci-theme-argon
+rm -rf feeds/luci/themes/luci-theme-argon
 rm -rf feeds/packages/multimedia/UnblockNeteaseMusic
 rm -rf feeds/luci/applications/luci-app-unblockmusic
 rm -rf feeds/packages/multimedia/UnblockNeteaseMusic-Go
 
 # luci-app-argon-config
-# git clone https://github.com/jerrykuku/luci-app-argon-config.git package/luci-app-argon-config
-sed -i 's/system/services/g'  feeds/luci/applications/luci-app-argon-config/luasrc/controller/argon-config.lua
+sed -i 's/system/services/g'  package/luci-app-argon-config/luasrc/controller/argon-config.lua
 
 # luci-app-design-config
-sed -i 's/system/services/g'  feeds/luci/applications/luci-app-design-config/luasrc/controller/*.lua
+# sed -i 's/system/services/g'  feeds/luci/applications/luci-app-design-config/luasrc/controller/*.lua
 
 # 调整VPN服务到VPN菜单
 # v2ray服务
