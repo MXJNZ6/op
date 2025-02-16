@@ -51,6 +51,7 @@ git clone https://github.com/xiaorouji/openwrt-passwall.git package/passwall
 git clone https://github.com/jerrykuku/luci-theme-argon.git  package/luci-theme-argon
 git clone https://github.com/jerrykuku/luci-app-argon-config.git  package/luci-app-argon-config
 git clone -b js https://github.com/sirpdboy/luci-theme-kucat.git  package/luci-theme-kucat
+git clone https://github.com/sirpdboy/luci-app-advancedplus.git  package/luci-app-advancedplus
 
 # 切换内核版本
 # sed -i 's/KERNEL_PATCHVER:=5.15/KERNEL_PATCHVER:=5.4/g' ./target/linux/x86/Makefile
