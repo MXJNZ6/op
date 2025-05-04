@@ -75,7 +75,7 @@ find ./ | grep Makefile | grep mosdns | xargs rm -f
 git clone https://github.com/sbwml/luci-app-mosdns -b v5 package/mosdns
 git clone https://github.com/sbwml/v2ray-geodata package/v2ray-geodata
 
-git clone https://github.com/linkease/istore.git package/istore
+# git clone https://github.com/linkease/istore.git package/istore
 
 # git clone  https://github.com/gdy666/luci-app-lucky.git package/lucky
 # git clone https://github.com/sbwml/openwrt-alist.git package/openwrt-alist
