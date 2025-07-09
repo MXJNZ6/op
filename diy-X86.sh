@@ -13,6 +13,8 @@
 echo "开始 DIY 配置……"
 echo "========================="
 
+echo "src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git;main" >> "feeds.conf.default"
+
 function merge_package() {
     # 参数1是分支名,参数2是库地址,参数3是所有文件下载到指定路径。
     # 同一个仓库下载多个文件夹直接在后面跟文件名或路径，空格分开。
@@ -45,11 +47,8 @@ function merge_package() {
 # sed -i '$a src-git nas_luci https://github.com/linkease/nas-packages-luci.git;main' feeds.conf.default
 
 git clone https://github.com/fw876/helloworld.git package/ssr
-git clone https://github.com/xiaorouji/openwrt-passwall-packages.git package/openwrt-passwall
-git clone https://github.com/xiaorouji/openwrt-passwall.git package/passwall
 
 git clone https://github.com/jerrykuku/luci-theme-argon.git  package/luci-theme-argon
-git clone https://github.com/jerrykuku/luci-app-argon-config.git  package/luci-app-argon-config
 git clone -b js https://github.com/sirpdboy/luci-theme-kucat.git  package/luci-theme-kucat
 git clone https://github.com/sirpdboy/luci-app-advancedplus.git  package/luci-app-advancedplus
 
