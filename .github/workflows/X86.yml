@@ -141,8 +141,7 @@ jobs:
           echo "status=success" >> $GITHUB_OUTPUT
 
       - name: Check space usage
-        if: !cancelled()
-        run: df -hT
+        run: df -Th
 
       - name: Upload firmware directory
         uses: actions/upload-artifact@v4
