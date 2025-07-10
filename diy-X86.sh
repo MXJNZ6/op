@@ -64,9 +64,6 @@ sed -i "s/hostname='OpenWrt'/hostname='Unicorn'/g" ./package/base-files/files/bi
 
 merge_package master https://github.com/vernesong/OpenClash OpenClash/luci-app-openclash
 merge_package main https://github.com/Lienol/openwrt-package openwrt-package/luci-app-filebrowser
-merge_package openwrt-23.05 https://github.com/immortalwrt/luci/trunk/applications/luci-app-docker immortalwrt/luci-app-docker
-merge_package openwrt-23.05 https://github.com/immortalwrt/luci/tree/openwrt-23.05/applications%2Fluci-app-docker  immortalwrt/luci-app-dovker1
-merge_package openwrt-23.05 https://github.com/immortalwrt/luci/trunk/applications%2Fluci-app-docker  immortalwrt/luci-app-dovker2
 
 #mosdns
 rm -rf feeds/packages/net/mosdns
