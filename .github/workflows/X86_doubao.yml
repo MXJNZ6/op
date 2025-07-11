@@ -110,19 +110,17 @@ jobs:
       - name: 加载自定义设置并调整配置
         working-directory: /mnt/workdir/openwrt
         run: |
-          if [ -f $DIY_SH ]; then
-            chmod +x $DIY_SH
-            if ! $GITHUB_WORKSPACE/$DIY_SH; then
-              echo "Failed to execute DIY script"
-              exit 1
-            fi
+          chmod +x "$GITHUB_WORKSPACE/$DIY_SH"
+          "$GITHUB_WORKSPACE/$DIY_SH"
+          # 移动自定义文件目录（仅当存在时执行）
+          if [ -d "$GITHUB_WORKSPACE/files" ]; then
+            mv "$GITHUB_WORKSPACE/files" ./files
+            echo "已移动自定义文件目录"
           fi
-          if [ -d $GITHUB_WORKSPACE/files ]; then
-            mv $GITHUB_WORKSPACE/files files
-          fi
-          if [ -f $GITHUB_WORKSPACE/$CONFIG_FILE ]; then
-            mv $GITHUB_WORKSPACE/$CONFIG_FILE.config
-          fi
+
+          mv "$GITHUB_WORKSPACE/$CONFIG_FILE" ./.config
+          echo "已加载自定义配置文件: $CONFIG_FILE"
+
           df -Th
 
       - name: 下载软件包
