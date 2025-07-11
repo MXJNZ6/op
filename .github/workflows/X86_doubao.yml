@@ -28,7 +28,7 @@ jobs:
         with:
           fetch - depth: 1
 
-      - name: Check server configuration
+      - name: 检查服务器配置
         run: |
           echo -e "-------------- CPU信息 --------------\n"
           echo "CPU核心及版本信息：$(cat /proc/cpuinfo | grep name | cut -f2 -d: | uniq -c)"
@@ -37,7 +37,7 @@ jobs:
           echo -e "\n-------------- 硬盘信息 --------------"
           df -Th
 
-      - name: Initialization environment
+      - name: 初始化环境
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
@@ -98,7 +98,7 @@ jobs:
           echo "DATE=$(date "+%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
           echo "DATE1=$(date "+%Y-%m-%d")" >> $GITHUB_ENV
 
-      - name: 加载自定义设置和调整配置
+      - name: 加载自定义设置并调整配置
         working-directory: /mnt/workdir/openwrt
         run: |
           if [ -f $DIY_SH ]; then
@@ -116,7 +116,7 @@ jobs:
           fi
           df -Th
 
-      - name: 下载包
+      - name: 下载软件包
         id: package
         working-directory: /mnt/workdir/openwrt
         run: |
@@ -147,14 +147,14 @@ jobs:
           echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
           df -Th
 
-      - name: Clean up server space
+      - name: 清理服务器空间
         if: steps.compile.outputs.status =='success' &&!cancelled()
         working-directory: /mnt/workdir/openwrt
         run: |
           ls -A | grep -v "^bin$" | xargs rm -rf 2>/dev/null
           df -hT ${PWD}
 
-      - name: Organize files
+      - name: 整理文件
         id: organize
         if: env.UPLOAD_FIRMWARE == 'true' &&!cancelled()
         working-directory: $GITHUB_WORKSPACE/openwrt/bin/targets/*/*
@@ -167,10 +167,10 @@ jobs:
           echo "FIRMWARE=$PWD" >> $GITHUB_ENV
           echo "status=success" >> $GITHUB_OUTPUT
 
-      - name: Check space usage
+      - name: 检查空间使用情况
         run: df -Th
 
-      - name: Upload firmware directory
+      - name: 上传固件目录
         uses: actions/upload - artifact@v4
         if: steps.organize.outputs.status =='success' &&!cancelled()
         with:
@@ -178,7 +178,7 @@ jobs:
           path: ${{ env.FIRMWARE }}
           retention - days: 7
 
-      - name: Create release
+      - name: 创建发布版本
         id: release
         uses: ncipollo/release - action@v1
         with:
