@@ -171,7 +171,7 @@ jobs:
         run: df -Th
 
       - name: 上传固件目录
-        uses: actions/upload-artifact@v3  # 修改为存在的版本 v3
+        uses: actions/upload-artifact@v3
         if: steps.organize.outputs.status == 'success' &&!cancelled()
         with:
           name: OpenWrt_${{ env.FILE_NAME }}_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
@@ -180,7 +180,7 @@ jobs:
 
       - name: 创建发布版本
         id: release
-        uses: ncipollo/release-action@v1.12.0  # 修改为存在的版本 v1.12.0
+        uses: ncipollo/release-action@v1.12.0
         with:
           name: R${{ env.DATE }} for ${{ env.FILE_NAME }}
           allowUpdates: true
