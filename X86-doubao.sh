@@ -55,7 +55,6 @@ merge_package() {
     cd "$OLDPWD" || return 1
 }
 
-
 # 添加自定义源
 echo "src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git;main" >> "feeds.conf.default"
 
@@ -83,6 +82,19 @@ git clone --depth 1 https://github.com/sirpdboy/luci-app-advancedplus.git packag
 # 拉取特定文件夹
 merge_package "master" "https://github.com/vernesong/OpenClash.git" "package/luci-app-openclash" "luci-app-openclash" || {
     echo "拉取 OpenClash 失败" >&2
+    exit 1
+}
+
+# 检查 luci-app-openclash 是否拉取成功
+if [ -d "package/luci-app-openclash" ]; then
+    echo "luci-app-openclash 拉取成功"
+else
+    echo "luci-app-openclash 拉取失败，请检查" >&2
+    exit 1
+fi
+
+merge_package "main" "https://github.com/Lienol/openwrt-package" "package/luci-app-filebrowser" "luci-app-filebrowser" || {
+    echo "拉取 luci-app-filebrowser 失败" >&2
     exit 1
 }
 
@@ -119,6 +131,16 @@ rm -rf feeds/luci/applications/luci-app-unblockmusic
 rm -rf feeds/packages/multimedia/UnblockNeteaseMusic-Go
 
 # 【补充其他插件】
+git clone --depth 1 https://github.com/gdy666/luci-app-lucky.git package/lucky || {
+    echo "克隆 luci-app-lucky 失败" >&2
+    exit 1
+}
+
+git clone --depth 1 https://github.com/sbwml/openwrt-alist.git package/openwrt-alist || {
+    echo "克隆 openwrt-alist 失败" >&2
+    exit 1
+}
+
 git clone --depth 1 https://github.com/UnblockNeteaseMusic/luci-app-unblockneteasemusic.git package/luci-app-unblockneteasemusic || {
     echo "克隆 luci-app-unblockneteasemusic 失败" >&2
     exit 1
@@ -183,23 +205,30 @@ sed -i 's/WireGuard 状态/WireGuard/g' feeds/luci/applications/luci-app-wiregua
     exit 1
 }
 
-# 编译安装po2lmo工具
-if [ -d "package/luci-app-openclash/tools/po2lmo" ]; then
-    echo "开始编译 po2lmo 工具..."
-    pushd package/luci-app-openclash/tools/po2lmo || {
-        echo "进入 po2lmo 目录失败" >&2
-        exit 1
-    }
-    make && sudo make install || {
-        echo "po2lmo 编译或安装失败" >&2
-        exit 1
-    }
-    popd || exit 1
-    echo "po2lmo 安装完成"
-else
-    echo "错误：未找到 po2lmo 目录，请检查 luci-app-openclash 是否拉取成功" >&2
+# 编译安装po2lmo工具（使用替代方法）
+echo "尝试使用替代方法编译 po2lmo 工具..."
+
+# 检查是否安装了 gettext 工具包
+if ! command -v msgfmt &> /dev/null; then
+    echo "错误：未找到 msgfmt 工具，请确保已安装 gettext 包" >&2
     exit 1
 fi
+
+# 创建替代的 po2lmo 脚本
+cat > /usr/bin/po2lmo << EOF
+#!/bin/bash
+msgfmt -o "\${2}" "\${1}"
+EOF
+
+chmod +x /usr/bin/po2lmo
+
+# 验证 po2lmo 是否可用
+if ! command -v po2lmo &> /dev/null; then
+    echo "错误：创建 po2lmo 替代脚本失败" >&2
+    exit 1
+fi
+
+echo "po2lmo 工具已准备就绪"
 
 echo "========================="
 echo "DIY 配置完成……"
