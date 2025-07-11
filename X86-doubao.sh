@@ -57,6 +57,12 @@ function merge_package() {
         if [[ -e "$path" ]]; then
             # 获取路径的基本名称（最后一个目录名）
             local base_name=$(basename "$path")
+            # 确保目标目录存在
+            mkdir -p "$rootdir/$target_dir"
+            # 检查目标路径是否存在
+            if [[ -e "$rootdir/$target_dir/$base_name" ]]; then
+                echo "警告：目标路径 $target_dir/$base_name 已存在，将覆盖" >&2
+            fi
             # 移动到目标目录下
             mv -f "$path" "$rootdir/$target_dir/" || {
                 echo "错误: 移动 $path 到 $target_dir 失败" >&2
@@ -90,12 +96,22 @@ sed -i "s/hostname='OpenWrt'/hostname='Unicorn'/g" ./package/base-files/files/bi
 
 rm -rf feeds/luci/applications/luci-app-openclash
 merge_package master https://github.com/vernesong/OpenClash.git openwrt-openclash luci-app-openclash
-pushd openwrt-openclash/luci-app-openclash/tools/po2lmo
-make && sudo make install
-popd
+
+# 编译安装po2lmo工具
+if [ -d "openwrt-openclash/luci-app-openclash/tools/po2lmo" ]; then
+    pushd openwrt-openclash/luci-app-openclash/tools/po2lmo || exit 1
+    make && sudo make install || {
+        echo "编译或安装 po2lmo 失败" >&2
+        popd
+        exit 1
+    }
+    popd || exit 1
+else
+    echo "错误：未找到 po2lmo 目录" >&2
+    exit 1
+fi
 
 merge_package openwrt-23.05 https://github.com/immortalwrt/luci.git immortalwrt applications/luci-app-docker
-
 
 #mosdns
 rm -rf feeds/packages/net/mosdns
@@ -114,7 +130,6 @@ rm -rf feeds/packages/multimedia/UnblockNeteaseMusic
 rm -rf feeds/luci/applications/luci-app-unblockmusic
 rm -rf feeds/packages/multimedia/UnblockNeteaseMusic-Go
 
-
 # wireguard
 # sed -i 's/status/vpn/g' feeds/luci/applications/luci-app-wireguard/luasrc/controller/wireguard.lua
 # sed -i 's/92/2/g' feeds/luci/applications/luci-app-wireguard/luasrc/controller/wireguard.lua
@@ -128,3 +143,4 @@ sed -i 's/services/network/g' feeds/luci/applications/luci-app-upnp/luasrc/view/
 
 echo "========================="
 echo " DIY2 配置完成……"
+exit 0
