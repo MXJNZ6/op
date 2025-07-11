@@ -171,12 +171,12 @@ jobs:
         run: df -Th
 
       - name: 上传固件目录
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4.0.0
         if: steps.organize.outputs.status == 'success' &&!cancelled()
         with:
           name: OpenWrt_${{ env.FILE_NAME }}_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
           path: ${{ env.FIRMWARE }}
-          retention-days: 7
+          retention-days: 21
 
       - name: 创建发布版本
         id: release
