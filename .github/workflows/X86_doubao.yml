@@ -1,0 +1,199 @@
+name: Build OpenWrt_X86_doubao
+
+on:
+  repository_dispatch:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 23 5 *?"
+
+env:
+  REPO_URL: https://github.com/coolsnowwolf/lede
+  REPO_BRANCH: master
+  CONFIG_FILE: X86.config
+  DIY_SH: diy - X86.sh
+  UPLOAD_FIRMWARE: true
+  UPLOAD_RELEASE: true
+  FILE_NAME: X86
+  TZ: Asia/Shanghai
+  MAX_JOBS: 4
+
+jobs:
+  build:
+    runs-on: ubuntu - 22.04
+    if: github.event.repository.owner.id == github.event.sender.id ||!github.event.sender.id
+
+    steps:
+      - name: Checkout OpenWrt
+        uses: actions/checkout@v4
+        with:
+          fetch - depth: 1
+
+      - name: Check server configuration
+        run: |
+          echo -e "-------------- CPU信息 --------------\n"
+          echo "CPU核心及版本信息：$(cat /proc/cpuinfo | grep name | cut -f2 -d: | uniq -c)"
+          echo -e "\n-------------- 内存信息 --------------"
+          free -h
+          echo -e "\n-------------- 硬盘信息 --------------"
+          df -Th
+
+      - name: Initialization environment
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          docker rmi -f $(docker images -q) 2>/dev/null || { echo "Failed to remove docker images"; exit 1; }
+          sudo -E apt - mark hold grub - efi - amd64 - signed
+          if! sudo -E apt update -y; then
+            echo "Failed to update apt"
+            exit 1
+          fi
+          packages_to_purge=(azure - cli* docker* ghc* zulu* llvm* firefox google* dotnet* powershell* openjdk* mysql* php* mongodb* dotnet* snap*)
+          for pkg in "${packages_to_purge[@]}"; do
+            if! sudo -E apt - y purge $pkg; then
+              echo "Failed to purge $pkg"
+              exit 1
+            fi
+          done
+          if! sudo -E apt - y full - upgrade; then
+            echo "Failed to full - upgrade apt"
+            exit 1
+          fi
+          required_packages=(ack asciidoc autoconf automake autopoint binutils bison build - essential \
+            bzip2 ccache clang cmake cpio curl device - tree - compiler flex gawk \
+            gcc - multilib g++ - multilib gettext genisoimage git gperf haveged help2man \
+            intltool libc6 - dev - i386 libelf - dev libfuse - dev libglib2.0 - dev libgmp3 - dev \
+            libltdl - dev libmpc - dev libmpfr - dev libncurses5 - dev libncursesw5 - dev \
+            libpython3 - dev libreadline - dev libssl - dev libtool lrzsz msmtp ninja - build \
+            p7zip p7zip - full patch pkgconf python3 python3 - pyelftools python3 - setuptools \
+            qemu - utils rsync squashfs - tools subversion swig texinfo uglifyjs upx - ucl \
+            unzip vim wget xmlto xxd zlib1g - dev)
+          if! sudo -E apt - y install ${required_packages[@]}; then
+            echo "Failed to install required packages"
+            exit 1
+          fi
+          if! sudo -E apt - y autoremove --purge; then
+            echo "Failed to autoremove packages"
+            exit 1
+          fi
+          if! sudo -E apt clean; then
+            echo "Failed to clean apt cache"
+            exit 1
+          fi
+          sudo -E timedatectl set - timezone "$TZ"
+          sudo mkdir -p /mnt/workdir
+          sudo chown $USER:$GROUPS /mnt/workdir
+          df -Th
+
+      - name: 下载固件源码
+        working-directory: /mnt/workdir
+        run: |
+          df -hT $PWD
+          if! git clone --depth 1 $REPO_URL -b $REPO_BRANCH openwrt; then
+            echo "Failed to clone OpenWrt repository"
+            exit 1
+          fi
+          ln -sf /mnt/workdir/openwrt $GITHUB_WORKSPACE/openwrt
+          useVersionInfo=$(cd openwrt && git show -s --date = short --format = "Author: %an | Date: %cd | Commit: %s | Hash: %H")
+          echo "useVersionInfo=$useVersionInfo" >> $GITHUB_ENV
+          echo "DATE=$(date "+%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
+          echo "DATE1=$(date "+%Y-%m-%d")" >> $GITHUB_ENV
+
+      - name: 加载自定义设置和调整配置
+        working-directory: /mnt/workdir/openwrt
+        run: |
+          if [ -f $DIY_SH ]; then
+            chmod +x $DIY_SH
+            if! $GITHUB_WORKSPACE/$DIY_SH; then
+              echo "Failed to execute DIY script"
+              exit 1
+            fi
+          fi
+          if [ -d $GITHUB_WORKSPACE/files ]; then
+            mv $GITHUB_WORKSPACE/files files
+          fi
+          if [ -f $GITHUB_WORKSPACE/$CONFIG_FILE ]; then
+            mv $GITHUB_WORKSPACE/$CONFIG_FILE.config
+          fi
+          df -Th
+
+      - name: 下载包
+        id: package
+        working-directory: /mnt/workdir/openwrt
+        run: |
+          make defconfig
+          if! make download -j$MAX_JOBS; then
+            echo "Failed to download packages"
+            exit 1
+          fi
+          find dl -size -1024c -exec ls -l {} \;
+          find dl -size -1024c -exec rm -f {} \;
+          df -Th
+
+      - name: 编译固件
+        id: compile
+        working-directory: /mnt/workdir/openwrt
+        run: |
+          echo -e "Using $MAX_JOBS threads for compilation"
+          if! make -j$MAX_JOBS; then
+            if! make -j1 V = s; then
+              echo "Compilation failed even with single - thread and verbose output"
+              exit 1
+            fi
+          fi
+          grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
+          if [ -s DEVICE_NAME ]; then
+            echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
+          fi
+          echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+          df -Th
+
+      - name: Clean up server space
+        if: steps.compile.outputs.status =='success' &&!cancelled()
+        working-directory: /mnt/workdir/openwrt
+        run: |
+          ls -A | grep -v "^bin$" | xargs rm -rf 2>/dev/null
+          df -hT ${PWD}
+
+      - name: Organize files
+        id: organize
+        if: env.UPLOAD_FIRMWARE == 'true' &&!cancelled()
+        working-directory: $GITHUB_WORKSPACE/openwrt/bin/targets/*/*
+        run: |
+          if! sudo cp $GITHUB_WORKSPACE/openwrt/.config $PWD/${FILE_NAME}_config_${DATE1}.config; then
+            echo "Failed to copy config file"
+            exit 1
+          fi
+          rm -rf packages
+          echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+          echo "status=success" >> $GITHUB_OUTPUT
+
+      - name: Check space usage
+        run: df -Th
+
+      - name: Upload firmware directory
+        uses: actions/upload - artifact@v4
+        if: steps.organize.outputs.status =='success' &&!cancelled()
+        with:
+          name: OpenWrt_${{ env.FILE_NAME }}_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+          path: ${{ env.FIRMWARE }}
+          retention - days: 7
+
+      - name: Create release
+        id: release
+        uses: ncipollo/release - action@v1
+        with:
+          name: R${{ env.DATE }} for ${{ env.FILE_NAME }}
+          allowUpdates: true
+          tag: ${{ env.FILE_NAME }}_${{ env.DATE1 }}
+          commit: master
+          token: ${{ secrets.GITHUB_TOKEN }}
+          body: |
+            This is OpenWrt firmware for ${{ env.FILE_NAME }}
+            ${{ env.useVersionInfo }}
+          artifacts: ${{ env.FIRMWARE }}/*
+
+      - name: TG notification
+        if: success()
+        run: |
+          curl "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+          -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=X86固件编译成功！\n日期：${{ env.DATE }}"
