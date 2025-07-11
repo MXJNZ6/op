@@ -5,7 +5,6 @@ echo "========================="
 
 # 定义合并仓库函数
 merge_package() {
-    # 参数：分支 仓库地址 目标目录 要拉取的文件/文件夹（空格分隔）
     if [[ $# -lt 3 ]]; then
         echo "参数错误：需要至少3个参数（分支、仓库地址、目标目录）" >&2
         return 1
@@ -13,27 +12,23 @@ merge_package() {
     local branch="$1"
     local repo_url="$2"
     local target_dir="$3"
-    shift 3  # 剩余参数为要拉取的文件/文件夹
+    shift 3
     local pull_files=("$@")
 
-    # 创建目标目录
     mkdir -p "$target_dir" || {
         echo "创建目标目录 $target_dir 失败" >&2
         return 1
     }
 
-    # 临时目录处理
     local tmpdir=$(mktemp -d)
-    trap 'rm -rf "$tmpdir"' EXIT  # 脚本结束时清理临时目录
+    trap 'rm -rf "$tmpdir"' EXIT
 
-    # 稀疏克隆仓库
     echo "拉取仓库：$repo_url（分支：$branch）"
     git clone -b "$branch" --depth 1 --filter=blob:none --sparse "$repo_url" "$tmpdir" || {
         echo "克隆仓库 $repo_url 失败" >&2
         return 1
     }
 
-    # 拉取指定文件/文件夹
     cd "$tmpdir" || {
         echo "进入临时目录 $tmpdir 失败" >&2
         return 1
@@ -47,7 +42,6 @@ merge_package() {
         return 1
     }
 
-    # 移动文件到目标目录
     for file in "${pull_files[@]}"; do
         if [[ -e "$file" ]]; then
             mv -f "$file" "$OLDPWD/$target_dir/" || {
@@ -58,13 +52,13 @@ merge_package() {
             echo "警告：$file 在仓库中不存在，跳过" >&2
         fi
     }
-    cd "$OLDPWD" || return 1  # 返回原目录
+    cd "$OLDPWD" || return 1
 }
 
 # 添加自定义源
 echo "src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git;main" >> "feeds.conf.default"
 
-# 克隆基础插件
+# 克隆独立插件
 git clone --depth 1 https://github.com/fw876/helloworld.git package/ssr || {
     echo "克隆 helloworld 失败" >&2
     exit 1
@@ -85,37 +79,7 @@ git clone --depth 1 https://github.com/sirpdboy/luci-app-advancedplus.git packag
     exit 1
 }
 
-# 处理mosdns相关包
-rm -rf feeds/packages/net/mosdns
-rm -rf feeds/luci/applications/luci-app-mosdns
-find ./ -name "Makefile" -path "*v2ray-geodata*" -delete
-find ./ -name "Makefile" -path "*mosdns*" -delete
-git clone --depth 1 -b v5 https://github.com/sbwml/luci-app-mosdns package/mosdns || {
-    echo "克隆 luci-app-mosdns 失败" >&2
-    exit 1
-}
-git clone --depth 1 https://github.com/sbwml/v2ray-geodata package/v2ray-geodata || {
-    echo "克隆 v2ray-geodata 失败" >&2
-    exit 1
-}
-
-# 克隆其他插件
-git clone --depth 1 https://github.com/gdy666/luci-app-lucky.git package/lucky || {
-    echo "克隆 luci-app-lucky 失败" >&2
-    exit 1
-}
-
-git clone --depth 1 https://github.com/sbwml/openwrt-alist.git package/openwrt-alist || {
-    echo "克隆 openwrt-alist 失败" >&2
-    exit 1
-}
-
-git clone --depth 1 https://github.com/UnblockNeteaseMusic/luci-app-unblockneteasemusic.git package/luci-app-unblockneteasemusic || {
-    echo "克隆 luci-app-unblockneteasemusic 失败" >&2
-    exit 1
-}
-
-# 使用merge_package拉取特定文件夹
+# 拉取特定文件夹
 merge_package "master" "https://github.com/vernesong/OpenClash.git" "package/luci-app-openclash" "luci-app-openclash" || {
     echo "拉取 OpenClash 失败" >&2
     exit 1
@@ -131,6 +95,50 @@ merge_package "openwrt-23.05" "https://github.com/immortalwrt/luci.git" "package
     exit 1
 }
 
+# 更新feeds索引
+./scripts/feeds update -a || {
+    echo "更新 feeds 失败" >&2
+    exit 1
+}
+
+# 处理冲突包
+# 【mosdns相关整体操作】
+rm -rf feeds/packages/net/mosdns
+rm -rf feeds/luci/applications/luci-app-mosdns
+find ./ -name "Makefile" -path "*v2ray-geodata*" -delete
+find ./ -name "Makefile" -path "*mosdns*" -delete
+git clone --depth 1 -b v5 https://github.com/sbwml/luci-app-mosdns package/mosdns || {
+    echo "克隆 luci-app-mosdns 失败" >&2
+    exit 1
+}
+git clone --depth 1 https://github.com/sbwml/v2ray-geodata package/v2ray-geodata || {
+    echo "克隆 v2ray-geodata 失败" >&2
+    exit 1
+}
+
+# 【其他冲突包处理】
+rm -rf feeds/luci/themes/luci-theme-argon
+rm -rf feeds/packages/multimedia/UnblockNeteaseMusic
+rm -rf feeds/luci/applications/luci-app-unblockmusic
+rm -rf feeds/packages/multimedia/UnblockNeteaseMusic-Go
+
+# 【补充其他插件】
+git clone --depth 1 https://github.com/gdy666/luci-app-lucky.git package/lucky || {
+    echo "克隆 luci-app-lucky 失败" >&2
+    exit 1
+}
+
+git clone --depth 1 https://github.com/sbwml/openwrt-alist.git package/openwrt-alist || {
+    echo "克隆 openwrt-alist 失败" >&2
+    exit 1
+}
+
+git clone --depth 1 https://github.com/UnblockNeteaseMusic/luci-app-unblockneteasemusic.git package/luci-app-unblockneteasemusic || {
+    echo "克隆 luci-app-unblockneteasemusic 失败" >&2
+    exit 1
+}
+
+# 修改系统配置
 # 修改默认IP
 sed -i 's/192.168.1.1/10.10.10.254/g' package/base-files/files/bin/config_generate || {
     echo "修改默认IP失败" >&2
@@ -147,7 +155,7 @@ sed -i "s/hostname='OpenWrt'/hostname='Unicorn'/g" package/base-files/files/bin/
     exit 1
 }
 
-# 调整菜单配置
+# 调整插件菜单和名称
 sed -i 's/system/services/g' package/luci-app-argon-config/luasrc/controller/argon-config.lua || {
     echo "调整 argon-config 菜单失败（非致命错误）" >&2
 }
@@ -176,7 +184,6 @@ sed -i 's/services/network/g' feeds/luci/applications/luci-app-upnp/luasrc/model
     echo "调整 upnp 配置菜单失败（非致命错误）" >&2
 }
 
-# 修改插件名称
 sed -i 's/"阿里云盘 WebDAV"/"阿里云盘"/g' package/luci-app-aliyundrive-webdav/po/zh-cn/aliyundrive-webdav.po || {
     echo "修改阿里云盘名称失败（非致命错误）" >&2
 }
@@ -184,31 +191,13 @@ sed -i 's/WireGuard 状态/WireGuard/g' feeds/luci/applications/luci-app-wiregua
     echo "修改 WireGuard 名称失败（非致命错误）" >&2
 }
 
-# 删除冲突包
-rm -rf feeds/luci/themes/luci-theme-argon || {
-    echo "删除冲突主题失败（非致命错误）" >&2
-}
-rm -rf feeds/packages/multimedia/UnblockNeteaseMusic || {
-    echo "删除 UnblockNeteaseMusic 失败（非致命错误）" >&2
-}
-rm -rf feeds/luci/applications/luci-app-unblockmusic || {
-    echo "删除 luci-app-unblockmusic 失败（非致命错误）" >&2
-}
-rm -rf feeds/packages/multimedia/UnblockNeteaseMusic-Go || {
-    echo "删除 UnblockNeteaseMusic-Go 失败（非致命错误）" >&2
-}
-
-# 更新并安装feeds
-./scripts/feeds update -a || {
-    echo "更新 feeds 失败" >&2
-    exit 1
-}
+# 最后安装所有feeds包
 ./scripts/feeds install -a || {
     echo "安装 feeds 失败" >&2
     exit 1
 }
 
-# 编译安装po2lmo
+# 编译安装po2lmo工具
 if [ -d "package/luci-app-openclash/tools/po2lmo" ]; then
     echo "开始编译 po2lmo 工具..."
     pushd package/luci-app-openclash/tools/po2lmo || {
