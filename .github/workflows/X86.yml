@@ -78,7 +78,7 @@ jobs:
           ln -sf /mnt/workdir/openwrt $GITHUB_WORKSPACE/openwrt
           cd openwrt
           # 获取版本信息（精简输出）
-          useVersionInfo=$(git show -s --date=short --format="Author: %an%nDate: %cd%nCommit: %s%nHash: %H")
+          useVersionInfo=$(git show -s --date=short --format="Author: %an | Date: %cd | Commit: %s | Hash: %H")
           echo "useVersionInfo=$useVersionInfo" >> $GITHUB_ENV
           echo "DATE=$(date "+%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
           echo "DATE1=$(date "+%Y-%m-%d")" >> $GITHUB_ENV
