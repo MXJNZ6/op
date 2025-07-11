@@ -193,7 +193,7 @@ sed -i 's/WireGuard 状态/WireGuard/g' feeds/luci/applications/luci-app-wiregua
 }
 
 # 最后安装所有feeds包
-./scripts/feeds install -a || {
+./scripts/feeds install -a -f || {
     echo "安装 feeds 失败" >&2
     exit 1
 }
