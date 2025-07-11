@@ -51,9 +51,10 @@ merge_package() {
         else
             echo "警告：$file 在仓库中不存在，跳过" >&2
         fi
-    }
+    done
     cd "$OLDPWD" || return 1
 }
+
 
 # 添加自定义源
 echo "src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git;main" >> "feeds.conf.default"
