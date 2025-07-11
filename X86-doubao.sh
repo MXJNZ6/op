@@ -3,232 +3,80 @@
 echo "开始 DIY 配置……"
 echo "========================="
 
-# 定义合并仓库函数
-merge_package() {
+function merge_package() {
+    # 参数1是分支名,参数2是库地址,参数3是所有文件下载到指定路径。
+    # 同一个仓库下载多个文件夹直接在后面跟文件名或路径，空格分开。
     if [[ $# -lt 3 ]]; then
-        echo "参数错误：需要至少3个参数（分支、仓库地址、目标目录）" >&2
+        echo "Syntax error: [$#] [$*]" >&2
         return 1
     fi
-    local branch="$1"
-    local repo_url="$2"
-    local target_dir="$3"
-    shift 3
-    local pull_files=("$@")
-
-    mkdir -p "$target_dir" || {
-        echo "创建目标目录 $target_dir 失败" >&2
-        return 1
-    }
-
-    local tmpdir=$(mktemp -d)
     trap 'rm -rf "$tmpdir"' EXIT
-
-    echo "拉取仓库：$repo_url（分支：$branch）"
-    git clone -b "$branch" --depth 1 --filter=blob:none --sparse "$repo_url" "$tmpdir" || {
-        echo "克隆仓库 $repo_url 失败" >&2
-        return 1
-    }
-
-    cd "$tmpdir" || {
-        echo "进入临时目录 $tmpdir 失败" >&2
-        return 1
-    }
-    git sparse-checkout init --cone || {
-        echo "初始化稀疏克隆失败" >&2
-        return 1
-    }
-    git sparse-checkout set "${pull_files[@]}" || {
-        echo "设置拉取文件失败：${pull_files[*]}" >&2
-        return 1
-    }
-
-    for file in "${pull_files[@]}"; do
-        if [[ -e "$file" ]]; then
-            mv -f "$file" "$OLDPWD/$target_dir/" || {
-                echo "移动 $file 到 $target_dir 失败" >&2
-                return 1
-            }
-        else
-            echo "警告：$file 在仓库中不存在，跳过" >&2
-        fi
+    branch="$1" curl="$2" target_dir="$3" && shift 3
+    rootdir="$PWD"
+    localdir="$target_dir"
+    [ -d "$localdir" ] || mkdir -p "$localdir"
+    tmpdir="$(mktemp -d)" || exit 1
+    git clone -b "$branch" --depth 1 --filter=blob:none --sparse "$curl" "$tmpdir"
+    cd "$tmpdir"
+    git sparse-checkout init --cone
+    git sparse-checkout set "$@"
+    # 使用循环逐个移动文件夹
+    for folder in "$@"; do
+        mv -f "$folder" "$rootdir/$localdir"
     done
-    cd "$OLDPWD" || return 1
+    cd "$rootdir"
 }
 
-# 添加自定义源
-echo "src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git;main" >> "feeds.conf.default"
+# Update feeds
+./scripts/feeds update -a
 
-# 克隆独立插件
-git clone --depth 1 https://github.com/fw876/helloworld.git package/ssr || {
-    echo "克隆 helloworld 失败" >&2
-    exit 1
-}
+# 添加源
+git clone https://github.com/fw876/helloworld.git package/ssr
+git clone https://github.com/jerrykuku/luci-theme-argon.git  package/luci-theme-argon
+git clone -b js https://github.com/sirpdboy/luci-theme-kucat.git  package/luci-theme-kucat
+git clone https://github.com/sirpdboy/luci-app-advancedplus.git  package/luci-app-advancedplus
 
-git clone --depth 1 https://github.com/jerrykuku/luci-theme-argon.git package/luci-theme-argon || {
-    echo "克隆 luci-theme-argon 失败" >&2
-    exit 1
-}
+# 修改openwrt登陆地址,把下面的10.10.10.254修改成你需要的
+sed -i 's/192.168.1.1/10.10.10.254/g' package/base-files/files/bin/config_generate
 
-git clone --depth 1 -b js https://github.com/sirpdboy/luci-theme-kucat.git package/luci-theme-kucat || {
-    echo "克隆 luci-theme-kucat 失败" >&2
-    exit 1
-}
+# 修改主机名字，把Unicorn修改成你喜欢的（不能纯数字或者使用中文）
+sed -i "/uci commit system/i\uci set system.@system[0].hostname='Unicorn'" package/lean/default-settings/files/zzz-default-settings
+sed -i "s/hostname='OpenWrt'/hostname='Unicorn'/g" ./package/base-files/files/bin/config_generate
 
-git clone --depth 1 https://github.com/sirpdboy/luci-app-advancedplus.git package/luci-app-advancedplus || {
-    echo "克隆 luci-app-advancedplus 失败" >&2
-    exit 1
-}
+rm -rf feeds/luci/applications/luci-app-openclash
+merge_package "master" "https://github.com/vernesong/OpenClash.git" "openclash/luci-app-openclash" "luci-app-openclash"
+merge_package main https://github.com/Lienol/openwrt-package openwrt-package/luci-app-filebrowser
+merge_package "openwrt-23.05" "https://github.com/immortalwrt/luci.git" "package/luci-app-docker" "applications/luci-app-docker"
 
-# 拉取特定文件夹
-merge_package "master" "https://github.com/vernesong/OpenClash.git" "package/luci-app-openclash" "luci-app-openclash" || {
-    echo "拉取 OpenClash 失败" >&2
-    exit 1
-}
 
-# 检查 luci-app-openclash 是否拉取成功
-if [ -d "package/luci-app-openclash" ]; then
-    echo "luci-app-openclash 拉取成功"
-else
-    echo "luci-app-openclash 拉取失败，请检查" >&2
-    exit 1
-fi
-
-merge_package "main" "https://github.com/Lienol/openwrt-package" "package/luci-app-filebrowser" "luci-app-filebrowser" || {
-    echo "拉取 luci-app-filebrowser 失败" >&2
-    exit 1
-}
-
-merge_package "openwrt-23.05" "https://github.com/immortalwrt/luci.git" "package/luci-app-docker" "applications/luci-app-docker" || {
-    echo "拉取 luci-app-docker 失败" >&2
-    exit 1
-}
-
-# 更新feeds索引
-./scripts/feeds update -a || {
-    echo "更新 feeds 失败" >&2
-    exit 1
-}
-
-# 处理冲突包
-# 【mosdns相关整体操作】
+#mosdns
 rm -rf feeds/packages/net/mosdns
 rm -rf feeds/luci/applications/luci-app-mosdns
-find ./ -name "Makefile" -path "*v2ray-geodata*" -delete
-find ./ -name "Makefile" -path "*mosdns*" -delete
-git clone --depth 1 -b v5 https://github.com/sbwml/luci-app-mosdns package/mosdns || {
-    echo "克隆 luci-app-mosdns 失败" >&2
-    exit 1
-}
-git clone --depth 1 https://github.com/sbwml/v2ray-geodata package/v2ray-geodata || {
-    echo "克隆 v2ray-geodata 失败" >&2
-    exit 1
-}
+find ./ | grep Makefile | grep v2ray-geodata | xargs rm -f
+find ./ | grep Makefile | grep mosdns | xargs rm -f
+git clone https://github.com/sbwml/luci-app-mosdns -b v5 package/mosdns
+git clone https://github.com/sbwml/v2ray-geodata package/v2ray-geodata
 
-# 【其他冲突包处理】
+git clone https://github.com/UnblockNeteaseMusic/luci-app-unblockneteasemusic.git package/luci-app-unblockneteasemusic
+
+# 删除包
 rm -rf feeds/luci/themes/luci-theme-argon
+rm -rf feeds/luci/themes/luci-theme-argon-mod
 rm -rf feeds/packages/multimedia/UnblockNeteaseMusic
 rm -rf feeds/luci/applications/luci-app-unblockmusic
 rm -rf feeds/packages/multimedia/UnblockNeteaseMusic-Go
 
-# 【补充其他插件】
-git clone --depth 1 https://github.com/gdy666/luci-app-lucky.git package/lucky || {
-    echo "克隆 luci-app-lucky 失败" >&2
-    exit 1
-}
 
-git clone --depth 1 https://github.com/sbwml/openwrt-alist.git package/openwrt-alist || {
-    echo "克隆 openwrt-alist 失败" >&2
-    exit 1
-}
+# wireguard
+sed -i 's/status/vpn/g' feeds/luci/applications/luci-app-wireguard/luasrc/controller/wireguard.lua
+sed -i 's/92/2/g' feeds/luci/applications/luci-app-wireguard/luasrc/controller/wireguard.lua
 
-git clone --depth 1 https://github.com/UnblockNeteaseMusic/luci-app-unblockneteasemusic.git package/luci-app-unblockneteasemusic || {
-    echo "克隆 luci-app-unblockneteasemusic 失败" >&2
-    exit 1
-}
+# 调整upnp到网络菜单
+sed -i 's/services/network/g' feeds/luci/applications/luci-app-upnp/luasrc/controller/*.lua
+sed -i 's/services/network/g' feeds/luci/applications/luci-app-upnp/luasrc/model/cbi/upnp/*.lua
+sed -i 's/services/network/g' feeds/luci/applications/luci-app-upnp/luasrc/view/*.htm
 
-# 修改系统配置
-# 修改默认IP
-sed -i 's/192.168.1.1/10.10.10.254/g' package/base-files/files/bin/config_generate || {
-    echo "修改默认IP失败" >&2
-    exit 1
-}
-
-# 修改主机名
-sed -i "/uci commit system/i\uci set system.@system[0].hostname='Unicorn'" package/lean/default-settings/files/zzz-default-settings || {
-    echo "修改主机名失败（zzz-default-settings）" >&2
-    exit 1
-}
-sed -i "s/hostname='OpenWrt'/hostname='Unicorn'/g" package/base-files/files/bin/config_generate || {
-    echo "修改主机名失败（config_generate）" >&2
-    exit 1
-}
-
-# 调整插件菜单和名称
-sed -i 's/system/services/g' package/luci-app-argon-config/luasrc/controller/argon-config.lua || {
-    echo "调整 argon-config 菜单失败（非致命错误）" >&2
-}
-
-sed -i 's/status/vpn/g' feeds/luci/applications/luci-app-wireguard/luasrc/controller/wireguard.lua || {
-    echo "调整 WireGuard 菜单失败（非致命错误）" >&2
-}
-sed -i 's/92/2/g' feeds/luci/applications/luci-app-wireguard/luasrc/controller/wireguard.lua || {
-    echo "调整 WireGuard 排序失败（非致命错误）" >&2
-}
-
-sed -i 's/services/nas/g' package/luci-app-aliyundrive-webdav/luasrc/controller/*.lua || {
-    echo "调整阿里云盘菜单失败（非致命错误）" >&2
-}
-sed -i 's/services/nas/g' package/luci-app-aliyundrive-webdav/luasrc/model/cbi/aliyundrive-webdav/*.lua || {
-    echo "调整阿里云盘配置菜单失败（非致命错误）" >&2
-}
-sed -i 's/services/nas/g' package/luci-app-aliyundrive-webdav/luasrc/view/aliyundrive-webdav/*.htm || {
-    echo "调整阿里云盘视图菜单失败（非致命错误）" >&2
-}
-
-sed -i 's/services/network/g' feeds/luci/applications/luci-app-upnp/luasrc/controller/*.lua || {
-    echo "调整 upnp 菜单失败（非致命错误）" >&2
-}
-sed -i 's/services/network/g' feeds/luci/applications/luci-app-upnp/luasrc/model/cbi/upnp/*.lua || {
-    echo "调整 upnp 配置菜单失败（非致命错误）" >&2
-}
-
-sed -i 's/"阿里云盘 WebDAV"/"阿里云盘"/g' package/luci-app-aliyundrive-webdav/po/zh-cn/aliyundrive-webdav.po || {
-    echo "修改阿里云盘名称失败（非致命错误）" >&2
-}
-sed -i 's/WireGuard 状态/WireGuard/g' feeds/luci/applications/luci-app-wireguard/po/zh-cn/wireguard.po || {
-    echo "修改 WireGuard 名称失败（非致命错误）" >&2
-}
-
-# 最后安装所有feeds包
-./scripts/feeds install -a -f || {
-    echo "安装 feeds 失败" >&2
-    exit 1
-}
-
-# 编译安装po2lmo工具（使用替代方法）
-echo "尝试使用替代方法编译 po2lmo 工具..."
-
-# 检查是否安装了 gettext 工具包
-if ! command -v msgfmt &> /dev/null; then
-    echo "错误：未找到 msgfmt 工具，请确保已安装 gettext 包" >&2
-    exit 1
-fi
-
-# 创建替代的 po2lmo 脚本
-cat > /usr/bin/po2lmo << EOF
-#!/bin/bash
-msgfmt -o "\${2}" "\${1}"
-EOF
-
-chmod +x /usr/bin/po2lmo
-
-# 验证 po2lmo 是否可用
-if ! command -v po2lmo &> /dev/null; then
-    echo "错误：创建 po2lmo 替代脚本失败" >&2
-    exit 1
-fi
-
-echo "po2lmo 工具已准备就绪"
+./scripts/feeds install -a -f
 
 echo "========================="
-echo "DIY 配置完成……"
+echo " DIY2 配置完成……"
