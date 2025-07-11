@@ -15,18 +15,18 @@ env:
   UPLOAD_RELEASE: true
   FILE_NAME: X86
   TZ: Asia/Shanghai
-  MAX_JOBS: 4
+  MAX_JOBS: 4  # 限制编译线程数
 
 jobs:
   build:
     runs-on: ubuntu-22.04
-    if: github.event.repository.owner.id == github.event.sender.id ||!github.event.sender.id
-
+    if: github.event.repository.owner.id == github.event.sender.id || !github.event.sender.id
+    
     steps:
       - name: Checkout OpenWrt
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 1  # 浅克隆
 
       - name: 检查服务器配置
         run: |
@@ -41,29 +41,16 @@ jobs:
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
-          # 修复语法错误，添加正确的if-then-else结构
-          docker rmi -f $(docker images -q) 2>/dev/null || echo "Failed to remove docker images"
+          # 清理冗余镜像
+          docker rmi -f $(docker images -q) 2>/dev/null || true
           sudo -E apt-mark hold grub-efi-amd64-signed
-          
-          if ! sudo -E apt update -y; then
-            echo "Failed to update apt"
-            exit 1
-          fi
-          
-          packages_to_purge=(azure-cli* docker* ghc* zulu* llvm* firefox google* dotnet* powershell* openjdk* mysql* php* mongodb* dotnet* snap*)
-          for pkg in "${packages_to_purge[@]}"; do
-            if ! sudo -E apt -y purge $pkg; then
-              echo "Failed to purge $pkg"
-              exit 1
-            fi
-          done
-          
-          if ! sudo -E apt -y full-upgrade; then
-            echo "Failed to full-upgrade apt"
-            exit 1
-          fi
-          
-          required_packages=(ack asciidoc autoconf automake autopoint binutils bison build-essential \
+          sudo -E apt update -y
+          # 精简系统组件
+          sudo -E apt -y purge azure-cli* docker* ghc* zulu* llvm* firefox google* dotnet* powershell* openjdk* mysql* php* mongodb* snap*
+          sudo -E apt -y full-upgrade
+          # 安装编译依赖
+          sudo -E apt -y install \
+            ack asciidoc autoconf automake autopoint binutils bison build-essential \
             bzip2 ccache clang cmake cpio curl device-tree-compiler flex gawk \
             gcc-multilib g++-multilib gettext genisoimage git gperf haveged help2man \
             intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev \
@@ -71,24 +58,12 @@ jobs:
             libpython3-dev libreadline-dev libssl-dev libtool lrzsz msmtp ninja-build \
             p7zip p7zip-full patch pkgconf python3 python3-pyelftools python3-setuptools \
             qemu-utils rsync squashfs-tools subversion swig texinfo uglifyjs upx-ucl \
-            unzip vim wget xmlto xxd zlib1g-dev)
-          
-          if ! sudo -E apt -y install ${required_packages[@]}; then
-            echo "Failed to install required packages"
-            exit 1
-          fi
-          
-          if ! sudo -E apt -y autoremove --purge; then
-            echo "Failed to autoremove packages"
-            exit 1
-          fi
-          
-          if ! sudo -E apt clean; then
-            echo "Failed to clean apt cache"
-            exit 1
-          fi
-          
+            unzip vim wget xmlto xxd zlib1g-dev
+          # 清理缓存
+          sudo -E apt -y autoremove --purge
+          sudo -E apt clean
           sudo -E timedatectl set-timezone "$TZ"
+          # 创建工作目录（确保权限正确）
           sudo mkdir -p /mnt/workdir
           sudo chown $USER:$GROUPS /mnt/workdir
           df -Th
@@ -96,114 +71,101 @@ jobs:
       - name: 下载固件源码
         working-directory: /mnt/workdir
         run: |
-          df -hT $PWD
-          if ! git clone --depth 1 $REPO_URL -b $REPO_BRANCH openwrt; then
-            echo "Failed to clone OpenWrt repository"
-            exit 1
-          fi
-          ln -sf /mnt/workdir/openwrt $GITHUB_WORKSPACE/openwrt
+          df -hT "$PWD"
+          # 浅克隆源码
+          git clone --depth 1 "$REPO_URL" -b "$REPO_BRANCH" openwrt
+          # 建立软链接，确保路径一致性
+          ln -sf /mnt/workdir/openwrt "$GITHUB_WORKSPACE/openwrt"
+          # 获取版本信息
           useVersionInfo=$(cd openwrt && git show -s --date=short --format="Author: %an | Date: %cd | Commit: %s | Hash: %H")
-          echo "useVersionInfo=$useVersionInfo" >> $GITHUB_ENV
-          echo "DATE=$(date "+%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
-          echo "DATE1=$(date "+%Y-%m-%d")" >> $GITHUB_ENV
+          echo "useVersionInfo=$useVersionInfo" >> "$GITHUB_ENV"
+          echo "DATE=$(date "+%Y-%m-%d %H:%M:%S")" >> "$GITHUB_ENV"
+          echo "DATE1=$(date "+%Y-%m-%d")" >> "$GITHUB_ENV"
 
-      - name: 加载自定义设置并调整配置
-        working-directory: /mnt/workdir/openwrt
+      - name: 加载自定义设置和调整配置
         run: |
-          chmod +x "$GITHUB_WORKSPACE/$DIY_SH"
-          "$GITHUB_WORKSPACE/$DIY_SH"
-          # 移动自定义文件目录（仅当存在时执行）
-          if [ -d "$GITHUB_WORKSPACE/files" ]; then
-            mv "$GITHUB_WORKSPACE/files" ./files
-            echo "已移动自定义文件目录"
+          if [ -f "$GITHUB_WORKSPACE/$DIY_SH" ]; then
+            chmod +x "$GITHUB_WORKSPACE/$DIY_SH"
+            cd openwrt && "$GITHUB_WORKSPACE/$DIY_SH"  # 进入openwrt目录执行sh，确保sh中路径正确
           fi
-
-          mv "$GITHUB_WORKSPACE/$CONFIG_FILE" ./.config
-          echo "已加载自定义配置文件: $CONFIG_FILE"
-
+          # 移动自定义文件
+          if [ -d "files" ]; then
+            mv "files" "openwrt/files"
+          fi
+          # 移动配置文件
+          if [ -f "$CONFIG_FILE" ]; then
+            mv "$CONFIG_FILE" "openwrt/.config"
+          fi
           df -Th
 
-      - name: 下载软件包
+      - name: 下载包
         id: package
-        working-directory: /mnt/workdir/openwrt
         run: |
+          cd openwrt
           make defconfig
-          if ! make download -j$MAX_JOBS; then
-            echo "Failed to download packages"
-            exit 1
-          fi
-          find dl -size -1024c -exec ls -l {} \;
+          make download -j"$MAX_JOBS"
+          # 清理无效文件
           find dl -size -1024c -exec rm -f {} \;
           df -Th
 
       - name: 编译固件
         id: compile
-        working-directory: /mnt/workdir/openwrt
         run: |
+          cd openwrt
           echo -e "Using $MAX_JOBS threads for compilation"
-          if ! make -j$MAX_JOBS; then
-            if ! make -j1 V=s; then
-              echo "Compilation failed even with single-thread and verbose output"
-              exit 1
-            fi
-          fi
-          grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
+          # 编译失败时降级为单线程调试
+          make -j"$MAX_JOBS" || make -j1 V=s
+          # 提取设备名称
+          grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
           if [ -s DEVICE_NAME ]; then
-            echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
+            echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> "$GITHUB_ENV"
           fi
-          echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+          echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> "$GITHUB_ENV"
           df -Th
 
       - name: 清理服务器空间
         if: steps.compile.outcome == 'success' && !cancelled()
-        working-directory: /mnt/workdir/openwrt
         run: |
+          cd openwrt
+          # 仅保留bin目录
           ls -A | grep -v "^bin$" | xargs rm -rf 2>/dev/null
-          df -hT ${PWD}
+          df -hT "$PWD"
 
       - name: 整理文件
         id: organize
         if: steps.compile.outcome == 'success' && !cancelled()
-        working-directory: $GITHUB_WORKSPACE/openwrt/bin/targets/*/*
         run: |
-          # 检查目录是否存在
-          if [ ! -d "$GITHUB_WORKSPACE/openwrt/bin/targets" ]; then
-            echo "Firmware directory not found, previous steps might have failed."
-            exit 1
-          fi
-          
-          if ! sudo cp $GITHUB_WORKSPACE/openwrt/.config $PWD/${FILE_NAME}_config_${DATE1}.config; then
-            echo "Failed to copy config file"
-            exit 1
-          fi
+          cd "$GITHUB_WORKSPACE/openwrt/bin/targets/*/*" || exit 1
+          # 复制配置文件
+          sudo cp "$GITHUB_WORKSPACE/openwrt/.config" "${FILE_NAME}_config_${DATE1}.config"
           rm -rf packages
-          echo "FIRMWARE=$PWD" >> $GITHUB_ENV
-          echo "status=success" >> $GITHUB_OUTPUT
+          echo "FIRMWARE=$PWD" >> "$GITHUB_ENV"
+          echo "status=success" >> "$GITHUB_OUTPUT"
 
       - name: 检查空间使用情况
         run: df -Th
 
       - name: 上传固件目录
-        uses: actions/upload-artifact@v4.0.0
+        uses: actions/upload-artifact@v4
         if: steps.organize.outputs.status == 'success' && !cancelled()
         with:
-          name: OpenWrt_${{ env.FILE_NAME }}_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
-          path: ${{ env.FIRMWARE }}
+          name: "OpenWrt_${{ env.FILE_NAME }}_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}"
+          path: "${{ env.FIRMWARE }}"
           retention-days: 7
 
       - name: 创建发布版本
         id: release
-        uses: ncipollo/release-action@v1.12.0
+        uses: ncipollo/release-action@v1
         with:
-          name: R${{ env.DATE }} for ${{ env.FILE_NAME }}
+          name: "R${{ env.DATE }} for ${{ env.FILE_NAME }}"
           allowUpdates: true
-          tag: ${{ env.FILE_NAME }}_${{ env.DATE1 }}
+          tag: "${{ env.FILE_NAME }}_${{ env.DATE1 }}"
           commit: master
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: "${{ secrets.GITHUB_TOKEN }}"
           body: |
             This is OpenWrt firmware for ${{ env.FILE_NAME }}
             ${{ env.useVersionInfo }}
-          artifacts: ${{ env.FIRMWARE }}/*
+          artifacts: "${{ env.FIRMWARE }}/*"
 
       - name: TG notification
         if: success()
