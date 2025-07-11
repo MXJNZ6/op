@@ -64,7 +64,7 @@ clone_repos \
     https://github.com/sbwml/openwrt-alist.git package/openwrt-alist \
     https://github.com/UnblockNeteaseMusic/luci-app-unblockneteasemusic.git package/luci-app-unblockneteasemusic
 
-# 拉取特定文件夹
+# 拉取特定文件夹（已包含 luci-app-openclash）
 pull_folder_from_repo "https://github.com/vernesong/OpenClash.git" "master" "luci-app-openclash" "package/luci-app-openclash"
 pull_folder_from_repo "https://github.com/Lienol/openwrt-package" "main" "luci-app-filebrowser" "package/luci-app-filebrowser"
 pull_folder_from_repo "https://github.com/immortalwrt/luci.git" "openwrt-23.05" "applications/luci-app-docker" "package/luci-app-docker"
@@ -128,6 +128,24 @@ rm -rf feeds/packages/multimedia/UnblockNeteaseMusic-Go
 
 # 安装软件包
 ./scripts/feeds install -a
+
+# ==============================================
+if [ -d "package/luci-app-openclash/tools/po2lmo" ]; then
+    echo "开始编译 po2lmo 工具..."
+    pushd package/luci-app-openclash/tools/po2lmo || {
+        echo "进入 po2lmo 目录失败" >&2
+        exit 1
+    }
+    make && sudo make install || {
+        echo "po2lmo 编译或安装失败" >&2
+        exit 1
+    }
+    popd || exit 1
+    echo "po2lmo 安装完成"
+else
+    echo "错误：未找到 po2lmo 目录，请检查 luci-app-openclash 是否拉取成功" >&2
+    exit 1
+fi
 
 echo "========================="
 echo "DIY 配置完成……"
