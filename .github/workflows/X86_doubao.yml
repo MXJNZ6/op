@@ -26,7 +26,7 @@ jobs:
       - name: Checkout OpenWrt
         uses: actions/checkout@v4
         with:
-          fetch - depth: 1
+          fetch-depth: 1
 
       - name: 检查服务器配置
         run: |
@@ -42,36 +42,36 @@ jobs:
           DEBIAN_FRONTEND: noninteractive
         run: |
           docker rmi -f $(docker images -q) 2>/dev/null || { echo "Failed to remove docker images"; exit 1; }
-          sudo -E apt - mark hold grub - efi - amd64 - signed
+          sudo -E apt-mark hold grub-efi-amd64-signed
           if! sudo -E apt update -y; then
             echo "Failed to update apt"
             exit 1
           fi
-          packages_to_purge=(azure - cli* docker* ghc* zulu* llvm* firefox google* dotnet* powershell* openjdk* mysql* php* mongodb* dotnet* snap*)
+          packages_to_purge=(azure-cli* docker* ghc* zulu* llvm* firefox google* dotnet* powershell* openjdk* mysql* php* mongodb* dotnet* snap*)
           for pkg in "${packages_to_purge[@]}"; do
-            if! sudo -E apt - y purge $pkg; then
+            if! sudo -E apt -y purge $pkg; then
               echo "Failed to purge $pkg"
               exit 1
             fi
           done
-          if! sudo -E apt - y full - upgrade; then
-            echo "Failed to full - upgrade apt"
+          if! sudo -E apt -y full-upgrade; then
+            echo "Failed to full-upgrade apt"
             exit 1
           fi
-          required_packages=(ack asciidoc autoconf automake autopoint binutils bison build - essential \
-            bzip2 ccache clang cmake cpio curl device - tree - compiler flex gawk \
-            gcc - multilib g++ - multilib gettext genisoimage git gperf haveged help2man \
-            intltool libc6 - dev - i386 libelf - dev libfuse - dev libglib2.0 - dev libgmp3 - dev \
-            libltdl - dev libmpc - dev libmpfr - dev libncurses5 - dev libncursesw5 - dev \
-            libpython3 - dev libreadline - dev libssl - dev libtool lrzsz msmtp ninja - build \
-            p7zip p7zip - full patch pkgconf python3 python3 - pyelftools python3 - setuptools \
-            qemu - utils rsync squashfs - tools subversion swig texinfo uglifyjs upx - ucl \
-            unzip vim wget xmlto xxd zlib1g - dev)
-          if! sudo -E apt - y install ${required_packages[@]}; then
+          required_packages=(ack asciidoc autoconf automake autopoint binutils bison build-essential \
+            bzip2 ccache clang cmake cpio curl device-tree-compiler flex gawk \
+            gcc-multilib g++-multilib gettext genisoimage git gperf haveged help2man \
+            intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev \
+            libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev \
+            libpython3-dev libreadline-dev libssl-dev libtool lrzsz msmtp ninja-build \
+            p7zip p7zip-full patch pkgconf python3 python3-pyelftools python3-setuptools \
+            qemu-utils rsync squashfs-tools subversion swig texinfo uglifyjs upx-ucl \
+            unzip vim wget xmlto xxd zlib1g-dev)
+          if! sudo -E apt -y install ${required_packages[@]}; then
             echo "Failed to install required packages"
             exit 1
           fi
-          if! sudo -E apt - y autoremove --purge; then
+          if! sudo -E apt -y autoremove --purge; then
             echo "Failed to autoremove packages"
             exit 1
           fi
@@ -79,7 +79,7 @@ jobs:
             echo "Failed to clean apt cache"
             exit 1
           fi
-          sudo -E timedatectl set - timezone "$TZ"
+          sudo -E timedatectl set-timezone "$TZ"
           sudo mkdir -p /mnt/workdir
           sudo chown $USER:$GROUPS /mnt/workdir
           df -Th
@@ -93,7 +93,7 @@ jobs:
             exit 1
           fi
           ln -sf /mnt/workdir/openwrt $GITHUB_WORKSPACE/openwrt
-          useVersionInfo=$(cd openwrt && git show -s --date = short --format = "Author: %an | Date: %cd | Commit: %s | Hash: %H")
+          useVersionInfo=$(cd openwrt && git show -s --date=short --format="Author: %an | Date: %cd | Commit: %s | Hash: %H")
           echo "useVersionInfo=$useVersionInfo" >> $GITHUB_ENV
           echo "DATE=$(date "+%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
           echo "DATE1=$(date "+%Y-%m-%d")" >> $GITHUB_ENV
@@ -135,8 +135,8 @@ jobs:
         run: |
           echo -e "Using $MAX_JOBS threads for compilation"
           if! make -j$MAX_JOBS; then
-            if! make -j1 V = s; then
-              echo "Compilation failed even with single - thread and verbose output"
+            if! make -j1 V=s; then
+              echo "Compilation failed even with single-thread and verbose output"
               exit 1
             fi
           fi
@@ -148,7 +148,7 @@ jobs:
           df -Th
 
       - name: 清理服务器空间
-        if: steps.compile.outputs.status =='success' &&!cancelled()
+        if: steps.compile.outputs.status == 'success' &&!cancelled()
         working-directory: /mnt/workdir/openwrt
         run: |
           ls -A | grep -v "^bin$" | xargs rm -rf 2>/dev/null
@@ -171,16 +171,16 @@ jobs:
         run: df -Th
 
       - name: 上传固件目录
-        uses: actions/upload - artifact@v4
-        if: steps.organize.outputs.status =='success' &&!cancelled()
+        uses: actions/upload-artifact@v3  # 修改为存在的版本 v3
+        if: steps.organize.outputs.status == 'success' &&!cancelled()
         with:
           name: OpenWrt_${{ env.FILE_NAME }}_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
           path: ${{ env.FIRMWARE }}
-          retention - days: 7
+          retention-days: 7
 
       - name: 创建发布版本
         id: release
-        uses: ncipollo/release - action@v1
+        uses: ncipollo/release-action@v1.12.0  # 修改为存在的版本 v1.12.0
         with:
           name: R${{ env.DATE }} for ${{ env.FILE_NAME }}
           allowUpdates: true
