@@ -161,7 +161,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           body: |
             This is OpenWrt firmware for ${{ env.FILE_NAME }}
-            ${{ env.useVersionInfo }}  # 显示源码版本信息
+            ${{ env.useVersionInfo }}  
           artifacts: ${{ env.FIRMWARE }}/*
 
       - name: TG notification
