@@ -41,23 +41,28 @@ jobs:
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
-          docker rmi -f $(docker images -q) 2>/dev/null || { echo "Failed to remove docker images"; exit 1; }
+          # 修复语法错误，添加正确的if-then-else结构
+          docker rmi -f $(docker images -q) 2>/dev/null || echo "Failed to remove docker images"
           sudo -E apt-mark hold grub-efi-amd64-signed
-          if! sudo -E apt update -y; then
+          
+          if ! sudo -E apt update -y; then
             echo "Failed to update apt"
             exit 1
           fi
+          
           packages_to_purge=(azure-cli* docker* ghc* zulu* llvm* firefox google* dotnet* powershell* openjdk* mysql* php* mongodb* dotnet* snap*)
           for pkg in "${packages_to_purge[@]}"; do
-            if! sudo -E apt -y purge $pkg; then
+            if ! sudo -E apt -y purge $pkg; then
               echo "Failed to purge $pkg"
               exit 1
             fi
           done
-          if! sudo -E apt -y full-upgrade; then
+          
+          if ! sudo -E apt -y full-upgrade; then
             echo "Failed to full-upgrade apt"
             exit 1
           fi
+          
           required_packages=(ack asciidoc autoconf automake autopoint binutils bison build-essential \
             bzip2 ccache clang cmake cpio curl device-tree-compiler flex gawk \
             gcc-multilib g++-multilib gettext genisoimage git gperf haveged help2man \
@@ -67,18 +72,22 @@ jobs:
             p7zip p7zip-full patch pkgconf python3 python3-pyelftools python3-setuptools \
             qemu-utils rsync squashfs-tools subversion swig texinfo uglifyjs upx-ucl \
             unzip vim wget xmlto xxd zlib1g-dev)
-          if! sudo -E apt -y install ${required_packages[@]}; then
+          
+          if ! sudo -E apt -y install ${required_packages[@]}; then
             echo "Failed to install required packages"
             exit 1
           fi
-          if! sudo -E apt -y autoremove --purge; then
+          
+          if ! sudo -E apt -y autoremove --purge; then
             echo "Failed to autoremove packages"
             exit 1
           fi
-          if! sudo -E apt clean; then
+          
+          if ! sudo -E apt clean; then
             echo "Failed to clean apt cache"
             exit 1
           fi
+          
           sudo -E timedatectl set-timezone "$TZ"
           sudo mkdir -p /mnt/workdir
           sudo chown $USER:$GROUPS /mnt/workdir
@@ -88,7 +97,7 @@ jobs:
         working-directory: /mnt/workdir
         run: |
           df -hT $PWD
-          if! git clone --depth 1 $REPO_URL -b $REPO_BRANCH openwrt; then
+          if ! git clone --depth 1 $REPO_URL -b $REPO_BRANCH openwrt; then
             echo "Failed to clone OpenWrt repository"
             exit 1
           fi
@@ -103,7 +112,7 @@ jobs:
         run: |
           if [ -f $DIY_SH ]; then
             chmod +x $DIY_SH
-            if! $GITHUB_WORKSPACE/$DIY_SH; then
+            if ! $GITHUB_WORKSPACE/$DIY_SH; then
               echo "Failed to execute DIY script"
               exit 1
             fi
@@ -121,7 +130,7 @@ jobs:
         working-directory: /mnt/workdir/openwrt
         run: |
           make defconfig
-          if! make download -j$MAX_JOBS; then
+          if ! make download -j$MAX_JOBS; then
             echo "Failed to download packages"
             exit 1
           fi
@@ -134,8 +143,8 @@ jobs:
         working-directory: /mnt/workdir/openwrt
         run: |
           echo -e "Using $MAX_JOBS threads for compilation"
-          if! make -j$MAX_JOBS; then
-            if! make -j1 V=s; then
+          if ! make -j$MAX_JOBS; then
+            if ! make -j1 V=s; then
               echo "Compilation failed even with single-thread and verbose output"
               exit 1
             fi
@@ -148,7 +157,7 @@ jobs:
           df -Th
 
       - name: 清理服务器空间
-        if: steps.compile.outputs.status == 'success' &&!cancelled()
+        if: steps.compile.outcome == 'success' && !cancelled()
         working-directory: /mnt/workdir/openwrt
         run: |
           ls -A | grep -v "^bin$" | xargs rm -rf 2>/dev/null
@@ -156,10 +165,16 @@ jobs:
 
       - name: 整理文件
         id: organize
-        if: env.UPLOAD_FIRMWARE == 'true' &&!cancelled()
+        if: steps.compile.outcome == 'success' && !cancelled()
         working-directory: $GITHUB_WORKSPACE/openwrt/bin/targets/*/*
         run: |
-          if! sudo cp $GITHUB_WORKSPACE/openwrt/.config $PWD/${FILE_NAME}_config_${DATE1}.config; then
+          # 检查目录是否存在
+          if [ ! -d "$GITHUB_WORKSPACE/openwrt/bin/targets" ]; then
+            echo "Firmware directory not found, previous steps might have failed."
+            exit 1
+          fi
+          
+          if ! sudo cp $GITHUB_WORKSPACE/openwrt/.config $PWD/${FILE_NAME}_config_${DATE1}.config; then
             echo "Failed to copy config file"
             exit 1
           fi
@@ -172,11 +187,11 @@ jobs:
 
       - name: 上传固件目录
         uses: actions/upload-artifact@v4.0.0
-        if: steps.organize.outputs.status == 'success' &&!cancelled()
+        if: steps.organize.outputs.status == 'success' && !cancelled()
         with:
           name: OpenWrt_${{ env.FILE_NAME }}_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
           path: ${{ env.FIRMWARE }}
-          retention-days: 21
+          retention-days: 7
 
       - name: 创建发布版本
         id: release
