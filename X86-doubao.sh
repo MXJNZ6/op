@@ -86,11 +86,6 @@ merge_package "master" "https://github.com/vernesong/OpenClash.git" "package/luc
     exit 1
 }
 
-merge_package "main" "https://github.com/Lienol/openwrt-package" "package/luci-app-filebrowser" "luci-app-filebrowser" || {
-    echo "拉取 luci-app-filebrowser 失败" >&2
-    exit 1
-}
-
 merge_package "openwrt-23.05" "https://github.com/immortalwrt/luci.git" "package/luci-app-docker" "applications/luci-app-docker" || {
     echo "拉取 luci-app-docker 失败" >&2
     exit 1
@@ -124,16 +119,6 @@ rm -rf feeds/luci/applications/luci-app-unblockmusic
 rm -rf feeds/packages/multimedia/UnblockNeteaseMusic-Go
 
 # 【补充其他插件】
-git clone --depth 1 https://github.com/gdy666/luci-app-lucky.git package/lucky || {
-    echo "克隆 luci-app-lucky 失败" >&2
-    exit 1
-}
-
-git clone --depth 1 https://github.com/sbwml/openwrt-alist.git package/openwrt-alist || {
-    echo "克隆 openwrt-alist 失败" >&2
-    exit 1
-}
-
 git clone --depth 1 https://github.com/UnblockNeteaseMusic/luci-app-unblockneteasemusic.git package/luci-app-unblockneteasemusic || {
     echo "克隆 luci-app-unblockneteasemusic 失败" >&2
     exit 1
