@@ -1,32 +1,39 @@
 #!/bin/bash
 #
-﻿
-echo "开始 DIY 配置……"
+# Copyright (c) 2019-2020 P3TERX <https://p3terx.com>
+#
+# This is free software, licensed under the MIT License.
+# See /LICENSE for more information.
+#
+# https://github.com/P3TERX/Actions-OpenWrt
+# File name: diy-part.sh
+# Description: OpenWrt DIY script part 2 (After Update feeds)
+#
+
+echo "开始 DIY2 配置……"
 echo "========================="
-﻿
-function merge_package() {
-    # 参数1是分支名,参数2是库地址,参数3是所有文件下载到指定路径。
-    # 同一个仓库下载多个文件夹直接在后面跟文件名或路径，空格分开。
-    if [[ $# -lt 3 ]]; then
-        echo "Syntax error: [$#] [$*]" >&2
-        return 1
-    fi
-    trap 'rm -rf "$tmpdir"' EXIT
-    branch="$1" curl="$2" target_dir="$3" && shift 3
-    rootdir="$PWD"
-    localdir="$target_dir"
-    [ -d "$localdir" ] || mkdir -p "$localdir"
-    tmpdir="$(mktemp -d)" || exit 1
-    git clone -b "$branch" --depth 1 --filter=blob:none --sparse "$curl" "$tmpdir"
-    cd "$tmpdir"
-    git sparse-checkout init --cone
-    git sparse-checkout set "$@"
-    # 使用循环逐个移动文件夹
-    for folder in "$@"; do
-        mv -f "$folder" "$rootdir/$localdir"
-    done
-    cd "$rootdir"
+
+function merge_package(){
+    repo=`echo $1 | rev | cut -d'/' -f 1 | rev`
+    pkg=`echo $2 | rev | cut -d'/' -f 1 | rev`
+    # find package/ -follow -name $pkg -not -path "package/custom/*" | xargs -rt rm -rf
+    git clone --depth=1 --single-branch $1
+    mv $2 package/custom/
+    rm -rf $repo
 }
+function drop_package(){
+    find package/ -follow -name $1 -not -path "package/custom/*" | xargs -rt rm -rf
+}
+function merge_feed(){
+    if [ ! -d "feed/$1" ]; then
+        echo >> feeds.conf.default
+        echo "src-git $1 $2" >> feeds.conf.default
+    fi
+    ./scripts/feeds update $1
+    ./scripts/feeds install -a -p $1
+}
+rm -rf package/custom; mkdir package/custom
+
 merge_package master https://github.com/vernesong/OpenClash OpenClash/luci-app-openclash
 git clone https://github.com/fw876/helloworld.git package/ssr
 git clone https://github.com/jerrykuku/luci-theme-argon.git  package/luci-theme-argon
