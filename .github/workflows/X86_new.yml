@@ -88,23 +88,13 @@ jobs:
 
     - name: 加载自定义配置
       run: |
-        cd "$GITHUB_WORKSPACE"
-        
-        if [ -f "$DIY_SH" ]; then
-          chmod +x "$DIY_SH"
-          echo "执行自定义脚本..."
-          (cd openwrt && source "../$DIY_SH")
-        fi
-        
-        if [ -d "files" ]; then
-          echo "移动自定义文件..."
-          mv -v "files" "openwrt/files"
-        fi
-        
-        if [ -f "$CONFIG_FILE" ]; then
-          echo "移动配置文件..."
-          mv -v "$CONFIG_FILE" "openwrt/.config"
-        fi
+        chmod +x $DIY_SH
+        cd openwrt
+        $GITHUB_WORKSPACE/$DIY_SH
+        cd -
+        [ -e files ] && mv files openwrt/files
+        [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
+        df -Th
         
         ls -l openwrt/.config openwrt/files/ 2>/dev/null || echo "无自定义配置"
 
