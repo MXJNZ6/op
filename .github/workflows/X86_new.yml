@@ -10,7 +10,7 @@ env:
   REPO_URL: https://github.com/coolsnowwolf/lede
   REPO_BRANCH: master
   CONFIG_FILE: X86.config
-  DIY_SH: X86-new.sh
+  DIY_SH: diy-part.sh
   UPLOAD_FIRMWARE: true
   UPLOAD_RELEASE: true
   FILE_NAME: X86
