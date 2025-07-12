@@ -15,7 +15,7 @@ env:
   UPLOAD_RELEASE: true
   FILE_NAME: X86
   TZ: Asia/Shanghai
-  MAX_JOBS: 4  # 控制编译并发数
+  MAX_JOBS: 4
 
 jobs:
   build:
@@ -26,7 +26,7 @@ jobs:
     - name: Checkout OpenWrt
       uses: actions/checkout@v4
       with:
-        fetch-depth: 1  # 浅克隆加速
+        fetch-depth: 1
 
     - name: 检查服务器配置
       run: |
@@ -35,7 +35,7 @@ jobs:
         lsb_release -a 2>/dev/null || echo "未安装lsb_release"
         echo -e "\n------ CPU信息 ------"
         echo "核心数: $(nproc)"
-        echo "型号: $(grep -m1 "model name" /proc/cpuinfo | cut -d: -f2)"
+        echo "型号: $(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2 | sed 's/^[[:space:]]*//')"
         echo -e "\n------ 内存信息 ------"
         free -h
         echo -e "\n------ 存储信息 ------"
@@ -45,18 +45,12 @@ jobs:
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
-        # 清理Docker缓存
         docker rmi -f $(docker images -q) 2>/dev/null || true
-        
-        # 保留必要系统组件
         sudo apt-mark hold grub-efi-amd64-signed
-        
-        # 更新系统
         sudo apt-get update -y
         sudo apt-get purge -y azure-cli* docker* ghc* zulu* llvm* firefox google* dotnet* powershell* openjdk* mysql* php* mongodb* snap*
         sudo apt-get full-upgrade -y
         
-        # 安装依赖
         sudo apt-get install -y \
           build-essential ccache clang cmake gawk gcc-multilib g++-multilib \
           gettext git libncurses5-dev libssl-dev python3 python3-pip zlib1g-dev \
@@ -64,12 +58,9 @@ jobs:
           libfuse-dev libmpc-dev libmpfr-dev subversion ninja-build rsync \
           upx-ucl p7zip-full curl wget unzip vim
         
-        # 清理空间
         sudo apt-get autoremove --purge -y
         sudo apt-get clean
         sudo timedatectl set-timezone "$TZ"
-        
-        # 创建工作目录
         sudo mkdir -p /mnt/workdir
         sudo chown $USER:$(id -gn) /mnt/workdir
         df -Th
@@ -77,40 +68,44 @@ jobs:
     - name: 下载固件源码
       working-directory: /mnt/workdir
       run: |
-        echo "工作目录空间:"
         df -hT "$PWD"
-        
         git clone --depth=1 --branch="$REPO_BRANCH" --single-branch "$REPO_URL" openwrt
         ln -sfn "/mnt/workdir/openwrt" "$GITHUB_WORKSPACE/openwrt"
         
         cd openwrt
-        echo "源码版本信息:" > version-info.txt
-        git show -s --date=short --format="Author: %an%nDate: %cd%nCommit: %s%nHash: %H" >> version-info.txt
+        {
+          echo "Author: $(git show -s --format='%an')"
+          echo "Date: $(git show -s --format='%cd' --date=short)"
+          echo "Commit: $(git show -s --format='%s')"
+          echo "Hash: $(git show -s --format='%H')"
+        } > version-info.txt
         cat version-info.txt
-        echo "useVersionInfo=$(cat version-info.txt)" >> $GITHUB_ENV
-        echo "DATE=$(date "+%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
-        echo "DATE1=$(date "+%Y-%m-%d")" >> $GITHUB_ENV
+        echo "DATE=$(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
+        echo "DATE1=$(date '+%Y-%m-%d')" >> $GITHUB_ENV
+        echo "VERSION_INFO<<EOF" >> $GITHUB_ENV
+        cat version-info.txt >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
 
     - name: 加载自定义配置
       run: |
-        # 确保在正确目录执行
         cd "$GITHUB_WORKSPACE"
         
-        echo "应用自定义脚本..."
         if [ -f "$DIY_SH" ]; then
           chmod +x "$DIY_SH"
+          echo "执行自定义脚本..."
           (cd openwrt && source "../$DIY_SH")
         fi
         
-        echo "移动配置文件..."
         if [ -d "files" ]; then
+          echo "移动自定义文件..."
           mv -v "files" "openwrt/files"
         fi
+        
         if [ -f "$CONFIG_FILE" ]; then
+          echo "移动配置文件..."
           mv -v "$CONFIG_FILE" "openwrt/.config"
         fi
         
-        echo "最终检查:"
         ls -l openwrt/.config openwrt/files/ 2>/dev/null || echo "无自定义配置"
 
     - name: 下载依赖包
@@ -121,9 +116,7 @@ jobs:
         make defconfig
         make download -j$MAX_JOBS
         
-        # 清理无效下载
         find dl -size -1024c -delete
-        echo "下载完成，剩余空间:"
         df -h
 
     - name: 编译固件
@@ -132,17 +125,14 @@ jobs:
       run: |
         echo "开始编译，使用$MAX_JOBS个线程..."
         
-        # 分阶段编译策略
         make -j$MAX_JOBS || \
         make -j$((MAX_JOBS/2)) || \
         make -j1 V=s
         
-        # 记录设备信息
         DEVICE=$(grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/')
         [ -n "$DEVICE" ] && echo "DEVICE_NAME=_$DEVICE" >> $GITHUB_ENV
-        echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+        echo "FILE_DATE=_$(date +'%Y%m%d%H%M')" >> $GITHUB_ENV
         
-        echo "编译完成！输出文件:"
         ls -lh bin/targets/*/*/
 
     - name: 清理工作空间
@@ -151,7 +141,6 @@ jobs:
       run: |
         shopt -s extglob
         rm -rf !(bin|logs|version-info.txt)
-        echo "清理后空间:"
         df -h
 
     - name: 整理固件文件
@@ -162,14 +151,10 @@ jobs:
         [ -z "$TARGET_DIR" ] && { echo "错误：找不到固件目录"; exit 1; }
         
         cd "$TARGET_DIR"
-        echo "固件目录: $PWD"
-        ls -lh
-        
-        # 复制配置信息
         cp "$GITHUB_WORKSPACE/openwrt/version-info.txt" .
         cp "$GITHUB_WORKSPACE/openwrt/.config" "${FILE_NAME}_config_${DATE1}.config"
-        
         rm -rf packages
+        
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
 
@@ -193,16 +178,17 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         body: |
           OpenWrt ${FILE_NAME} 固件编译结果
-          ${{ env.useVersionInfo }}
-          包含插件: aria2, diskman, docker, openclash, ssr-plus等
+          ${{ env.VERSION_INFO }}
           编译时间: ${{ env.DATE }}
+          包含插件: aria2, diskman, docker, openclash, ssr-plus等
         artifacts: "${{ env.FIRMWARE }}/*"
         artifactErrorsFailBuild: false
 
     - name: TG通知
       if: success()
       run: |
+        FIRMWARE_SIZE=$(du -sh "${{ env.FIRMWARE }}" | cut -f1)
         curl -sSf -X POST \
           "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
           -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-          -d text="OpenWrt X86固件编译成功！%0A%0A📅 日期: ${DATE}%0A💾 大小: $(du -sh ${{ env.FIRMWARE }} | cut -f1)%0A🔧 包含插件: aria2, diskman, docker, openclash, ssr-plus"
+          -d text="OpenWrt X86固件编译成功！%0A%0A📅 日期: ${{ env.DATE }}%0A💾 大小: ${FIRMWARE_SIZE}%0A🔧 包含插件: aria2, diskman, docker, openclash, ssr-plus"
