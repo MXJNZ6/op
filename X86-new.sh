@@ -55,6 +55,7 @@ git clone https://github.com/sbwml/v2ray-geodata package/v2ray-geodata
 # 删除包
 rm -rf feeds/luci/themes/luci-theme-argon
 rm -rf feeds/packages/multimedia/UnblockNeteaseMusic
+rm -rf feeds/luci/applications/luci-app-openclash
 rm -rf feeds/luci/applications/luci-app-unblockmusic
 rm -rf feeds/packages/multimedia/UnblockNeteaseMusic-Go
 ﻿
@@ -63,7 +64,7 @@ sed -i 's/services/network/g' feeds/luci/applications/luci-app-upnp/luasrc/contr
 sed -i 's/services/network/g' feeds/luci/applications/luci-app-upnp/luasrc/model/cbi/upnp/*.lua
 sed -i 's/services/network/g' feeds/luci/applications/luci-app-upnp/luasrc/view/*.htm
 ﻿
-./scripts/feeds install -a
+./scripts/feeds install -a -f
 ﻿
 echo "========================="
 echo " DIY2 配置完成……"
