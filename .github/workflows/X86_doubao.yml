@@ -1,21 +1,21 @@
-name: Build OpenWrt_X86_doubao
+name: Build OpenWrt_X86_Optimized
 
 on:
   repository_dispatch:
   workflow_dispatch:
   schedule:
-    - cron: "0 23 5 * ?"
+    - cron: "0 23 5 * *"
 
 env:
   REPO_URL: https://github.com/coolsnowwolf/lede
   REPO_BRANCH: master
   CONFIG_FILE: X86.config
-  DIY_SH: X86-doubao.sh
+  DIY_SH: diy-X86.sh
   UPLOAD_FIRMWARE: true
   UPLOAD_RELEASE: true
   FILE_NAME: X86
   TZ: Asia/Shanghai
-  MAX_JOBS: 4  # 限制编译线程数
+  MAX_JOBS: 4  # 控制编译并发数
 
 jobs:
   build:
@@ -23,152 +23,186 @@ jobs:
     if: github.event.repository.owner.id == github.event.sender.id || !github.event.sender.id
     
     steps:
-      - name: Checkout OpenWrt
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1  # 浅克隆
+    - name: Checkout OpenWrt
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1  # 浅克隆加速
 
-      - name: 检查服务器配置
-        run: |
-          echo -e "-------------- CPU信息 --------------\n"
-          echo "CPU核心及版本信息：$(cat /proc/cpuinfo | grep name | cut -f2 -d: | uniq -c)"
-          echo -e "\n-------------- 内存信息 --------------"
-          free -h
-          echo -e "\n-------------- 硬盘信息 --------------"
-          df -Th
+    - name: 检查服务器配置
+      run: |
+        echo -e "------ 系统信息 ------"
+        uname -a
+        lsb_release -a 2>/dev/null || echo "未安装lsb_release"
+        echo -e "\n------ CPU信息 ------"
+        echo "核心数: $(nproc)"
+        echo "型号: $(grep -m1 "model name" /proc/cpuinfo | cut -d: -f2)"
+        echo -e "\n------ 内存信息 ------"
+        free -h
+        echo -e "\n------ 存储信息 ------"
+        df -Th
 
-      - name: 初始化环境
-        env:
-          DEBIAN_FRONTEND: noninteractive
-        run: |
-          # 清理冗余镜像
-          docker rmi -f $(docker images -q) 2>/dev/null || true
-          sudo -E apt-mark hold grub-efi-amd64-signed
-          sudo -E apt update -y
-          # 精简系统组件
-          sudo -E apt -y purge azure-cli* docker* ghc* zulu* llvm* firefox google* dotnet* powershell* openjdk* mysql* php* mongodb* snap*
-          sudo -E apt -y full-upgrade
-          # 安装编译依赖
-          sudo -E apt -y install \
-            ack asciidoc autoconf automake autopoint binutils bison build-essential \
-            bzip2 ccache clang cmake cpio curl device-tree-compiler flex gawk \
-            gcc-multilib g++-multilib gettext genisoimage git gperf haveged help2man \
-            intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev \
-            libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev \
-            libpython3-dev libreadline-dev libssl-dev libtool lrzsz msmtp ninja-build \
-            p7zip p7zip-full patch pkgconf python3 python3-pyelftools python3-setuptools \
-            qemu-utils rsync squashfs-tools subversion swig texinfo uglifyjs upx-ucl \
-            unzip vim wget xmlto xxd zlib1g-dev
-          # 清理缓存
-          sudo -E apt -y autoremove --purge
-          sudo -E apt clean
-          sudo -E timedatectl set-timezone "$TZ"
-          # 创建工作目录（确保权限正确）
-          sudo mkdir -p /mnt/workdir
-          sudo chown $USER:$GROUPS /mnt/workdir
-          df -Th
+    - name: 初始化环境
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        # 清理Docker缓存
+        docker rmi -f $(docker images -q) 2>/dev/null || true
+        
+        # 保留必要系统组件
+        sudo apt-mark hold grub-efi-amd64-signed
+        
+        # 更新系统
+        sudo apt-get update -y
+        sudo apt-get purge -y azure-cli* docker* ghc* zulu* llvm* firefox google* dotnet* powershell* openjdk* mysql* php* mongodb* snap*
+        sudo apt-get full-upgrade -y
+        
+        # 安装依赖
+        sudo apt-get install -y \
+          build-essential ccache clang cmake gawk gcc-multilib g++-multilib \
+          gettext git libncurses5-dev libssl-dev python3 python3-pip zlib1g-dev \
+          binutils bison flex autoconf automake libtool pkgconf libelf-dev \
+          libfuse-dev libmpc-dev libmpfr-dev subversion ninja-build rsync \
+          upx-ucl p7zip-full curl wget unzip vim
+        
+        # 清理空间
+        sudo apt-get autoremove --purge -y
+        sudo apt-get clean
+        sudo timedatectl set-timezone "$TZ"
+        
+        # 创建工作目录
+        sudo mkdir -p /mnt/workdir
+        sudo chown $USER:$(id -gn) /mnt/workdir
+        df -Th
 
-      - name: 下载固件源码
-        working-directory: /mnt/workdir
-        run: |
-          df -hT "$PWD"
-          # 浅克隆源码
-          git clone --depth 1 "$REPO_URL" -b "$REPO_BRANCH" openwrt
-          # 建立软链接，确保路径一致性
-          ln -sf /mnt/workdir/openwrt "$GITHUB_WORKSPACE/openwrt"
-          # 获取版本信息
-          useVersionInfo=$(cd openwrt && git show -s --date=short --format="Author: %an | Date: %cd | Commit: %s | Hash: %H")
-          echo "useVersionInfo=$useVersionInfo" >> "$GITHUB_ENV"
-          echo "DATE=$(date "+%Y-%m-%d %H:%M:%S")" >> "$GITHUB_ENV"
-          echo "DATE1=$(date "+%Y-%m-%d")" >> "$GITHUB_ENV"
+    - name: 下载固件源码
+      working-directory: /mnt/workdir
+      run: |
+        echo "工作目录空间:"
+        df -hT "$PWD"
+        
+        git clone --depth=1 --branch="$REPO_BRANCH" --single-branch "$REPO_URL" openwrt
+        ln -sfn "/mnt/workdir/openwrt" "$GITHUB_WORKSPACE/openwrt"
+        
+        cd openwrt
+        echo "源码版本信息:" > version-info.txt
+        git show -s --date=short --format="Author: %an%nDate: %cd%nCommit: %s%nHash: %H" >> version-info.txt
+        cat version-info.txt
+        echo "useVersionInfo=$(cat version-info.txt)" >> $GITHUB_ENV
+        echo "DATE=$(date "+%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
+        echo "DATE1=$(date "+%Y-%m-%d")" >> $GITHUB_ENV
 
-      - name: 加载自定义设置和调整配置
-        run: |
-          if [ -f "$GITHUB_WORKSPACE/$DIY_SH" ]; then
-            chmod +x "$GITHUB_WORKSPACE/$DIY_SH"
-            cd openwrt && "$GITHUB_WORKSPACE/$DIY_SH"  # 进入openwrt目录执行sh，确保sh中路径正确
-          fi
-          # 移动自定义文件
-          if [ -d "files" ]; then
-            mv "files" "openwrt/files"
-          fi
-          # 移动配置文件
-          if [ -f "$CONFIG_FILE" ]; then
-            mv "$CONFIG_FILE" "openwrt/.config"
-          fi
-          df -Th
+    - name: 加载自定义配置
+      run: |
+        # 确保在正确目录执行
+        cd "$GITHUB_WORKSPACE"
+        
+        echo "应用自定义脚本..."
+        if [ -f "$DIY_SH" ]; then
+          chmod +x "$DIY_SH"
+          (cd openwrt && source "../$DIY_SH")
+        fi
+        
+        echo "移动配置文件..."
+        if [ -d "files" ]; then
+          mv -v "files" "openwrt/files"
+        fi
+        if [ -f "$CONFIG_FILE" ]; then
+          mv -v "$CONFIG_FILE" "openwrt/.config"
+        fi
+        
+        echo "最终检查:"
+        ls -l openwrt/.config openwrt/files/ 2>/dev/null || echo "无自定义配置"
 
-      - name: 下载包
-        id: package
-        run: |
-          cd openwrt
-          make defconfig
-          make download -j"$MAX_JOBS"
-          # 清理无效文件
-          find dl -size -1024c -exec rm -f {} \;
-          df -Th
+    - name: 下载依赖包
+      id: package
+      working-directory: "$GITHUB_WORKSPACE/openwrt"
+      run: |
+        echo "使用$MAX_JOBS个并行任务下载..."
+        make defconfig
+        make download -j$MAX_JOBS
+        
+        # 清理无效下载
+        find dl -size -1024c -delete
+        echo "下载完成，剩余空间:"
+        df -h
 
-      - name: 编译固件
-        id: compile
-        run: |
-          cd openwrt
-          echo -e "Using $MAX_JOBS threads for compilation"
-          # 编译失败时降级为单线程调试
-          make -j"$MAX_JOBS" || make -j1 V=s
-          # 提取设备名称
-          grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
-          if [ -s DEVICE_NAME ]; then
-            echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> "$GITHUB_ENV"
-          fi
-          echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> "$GITHUB_ENV"
-          df -Th
+    - name: 编译固件
+      id: compile
+      working-directory: "$GITHUB_WORKSPACE/openwrt"
+      run: |
+        echo "开始编译，使用$MAX_JOBS个线程..."
+        
+        # 分阶段编译策略
+        make -j$MAX_JOBS || \
+        make -j$((MAX_JOBS/2)) || \
+        make -j1 V=s
+        
+        # 记录设备信息
+        DEVICE=$(grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/')
+        [ -n "$DEVICE" ] && echo "DEVICE_NAME=_$DEVICE" >> $GITHUB_ENV
+        echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+        
+        echo "编译完成！输出文件:"
+        ls -lh bin/targets/*/*/
 
-      - name: 清理服务器空间
-        if: steps.compile.outcome == 'success' && !cancelled()
-        run: |
-          cd openwrt
-          # 仅保留bin目录
-          ls -A | grep -v "^bin$" | xargs rm -rf 2>/dev/null
-          df -hT "$PWD"
+    - name: 清理工作空间
+      if: steps.compile.outcome == 'success' && !cancelled()
+      working-directory: "$GITHUB_WORKSPACE/openwrt"
+      run: |
+        shopt -s extglob
+        rm -rf !(bin|logs|version-info.txt)
+        echo "清理后空间:"
+        df -h
 
-      - name: 整理文件
-        id: organize
-        if: steps.compile.outcome == 'success' && !cancelled()
-        run: |
-          cd "$GITHUB_WORKSPACE/openwrt/bin/targets/*/*" || exit 1
-          # 复制配置文件
-          sudo cp "$GITHUB_WORKSPACE/openwrt/.config" "${FILE_NAME}_config_${DATE1}.config"
-          rm -rf packages
-          echo "FIRMWARE=$PWD" >> "$GITHUB_ENV"
-          echo "status=success" >> "$GITHUB_OUTPUT"
+    - name: 整理固件文件
+      id: organize
+      if: env.UPLOAD_FIRMWARE == 'true' && steps.compile.outcome == 'success' && !cancelled()
+      run: |
+        TARGET_DIR=$(find "$GITHUB_WORKSPACE/openwrt/bin/targets" -type d -path "*/targets/*/*" | head -1)
+        [ -z "$TARGET_DIR" ] && { echo "错误：找不到固件目录"; exit 1; }
+        
+        cd "$TARGET_DIR"
+        echo "固件目录: $PWD"
+        ls -lh
+        
+        # 复制配置信息
+        cp "$GITHUB_WORKSPACE/openwrt/version-info.txt" .
+        cp "$GITHUB_WORKSPACE/openwrt/.config" "${FILE_NAME}_config_${DATE1}.config"
+        
+        rm -rf packages
+        echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+        echo "status=success" >> $GITHUB_OUTPUT
 
-      - name: 检查空间使用情况
-        run: df -Th
+    - name: 上传固件
+      uses: actions/upload-artifact@v4
+      if: steps.organize.outputs.status == 'success' && !cancelled()
+      with:
+        name: "OpenWrt_${FILE_NAME}_${DATE1}${DEVICE_NAME}"
+        path: "${{ env.FIRMWARE }}"
+        retention-days: 7
+        compression-level: 0
 
-      - name: 上传固件目录
-        uses: actions/upload-artifact@v4
-        if: steps.organize.outputs.status == 'success' && !cancelled()
-        with:
-          name: "OpenWrt_${{ env.FILE_NAME }}_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}"
-          path: "${{ env.FIRMWARE }}"
-          retention-days: 7
+    - name: 创建发布版本
+      id: release
+      uses: ncipollo/release-action@v1
+      if: env.UPLOAD_RELEASE == 'true' && steps.organize.outputs.status == 'success' && !cancelled()
+      with:
+        name: "OpenWrt ${FILE_NAME} ${DATE1}"
+        tag: "v${DATE1}"
+        commit: master
+        token: ${{ secrets.GITHUB_TOKEN }}
+        body: |
+          OpenWrt ${FILE_NAME} 固件编译结果
+          ${{ env.useVersionInfo }}
+          包含插件: aria2, diskman, docker, openclash, ssr-plus等
+          编译时间: ${{ env.DATE }}
+        artifacts: "${{ env.FIRMWARE }}/*"
+        artifactErrorsFailBuild: false
 
-      - name: 创建发布版本
-        id: release
-        uses: ncipollo/release-action@v1
-        with:
-          name: "R${{ env.DATE }} for ${{ env.FILE_NAME }}"
-          allowUpdates: true
-          tag: "${{ env.FILE_NAME }}_${{ env.DATE1 }}"
-          commit: master
-          token: "${{ secrets.GITHUB_TOKEN }}"
-          body: |
-            This is OpenWrt firmware for ${{ env.FILE_NAME }}
-            ${{ env.useVersionInfo }}
-          artifacts: "${{ env.FIRMWARE }}/*"
-
-      - name: TG notification
-        if: success()
-        run: |
-          curl "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-          -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=X86固件编译成功！\n日期：${{ env.DATE }}"
+    - name: TG通知
+      if: success()
+      run: |
+        curl -sSf -X POST \
+          "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+          -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+          -d text="OpenWrt X86固件编译成功！%0A%0A📅 日期: ${DATE}%0A💾 大小: $(du -sh ${{ env.FIRMWARE }} | cut -f1)%0A🔧 包含插件: aria2, diskman, docker, openclash, ssr-plus"
