@@ -35,6 +35,11 @@ function merge_feed(){
 rm -rf package/custom; mkdir package/custom
 
 merge_package https://github.com/vernesong/OpenClash OpenClash/luci-app-openclash
+# 编译 po2lmo (如果有po2lmo可跳过)
+pushd package/custom/luci-app-openclash/tools/po2lmo
+make && sudo make install
+popd
+
 git clone https://github.com/fw876/helloworld.git package/ssr
 git clone https://github.com/jerrykuku/luci-theme-argon.git  package/luci-theme-argon
 git clone -b js https://github.com/sirpdboy/luci-theme-kucat.git  package/luci-theme-kucat
