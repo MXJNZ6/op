@@ -34,7 +34,7 @@ function merge_feed(){
 }
 rm -rf package/custom; mkdir package/custom
 
-merge_package master https://github.com/vernesong/OpenClash OpenClash/luci-app-openclash
+merge_package https://github.com/vernesong/OpenClash OpenClash/luci-app-openclash
 git clone https://github.com/fw876/helloworld.git package/ssr
 git clone https://github.com/jerrykuku/luci-theme-argon.git  package/luci-theme-argon
 git clone -b js https://github.com/sirpdboy/luci-theme-kucat.git  package/luci-theme-kucat
