@@ -49,6 +49,7 @@ sed -i 's/192.168.1.1/10.10.10.254/g' package/base-files/files/bin/config_genera
 # 修改主机名字，把Unicorn修改成你喜欢的（不能纯数字或者使用中文）
 sed -i "/uci commit system/i\uci set system.@system[0].hostname='Unicorn'" package/lean/default-settings/files/zzz-default-settings
 sed -i "s/hostname='OpenWrt'/hostname='Unicorn'/g" ./package/base-files/files/bin/config_generate
+echo "src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git;main" >> "feeds.conf.default"
 # Update feeds
 ./scripts/feeds update -a
 #mosdns
