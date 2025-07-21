@@ -152,12 +152,10 @@ jobs:
           OpenWrt ${{ env.FILE_NAME }} 最新编译版本
           📅 编译时间: ${{ env.DATE }}
           🔧 配置文件: ${{ env.CONFIG_FILE }}
-          📦 包含文件:
-          - 最新固件镜像 (*.img.gz)
-          - 编译配置文件 (.config)
-        artifacts: |
-          ${{ env.FIRMWARE }}/*.img.gz
-          ${{ env.FIRMWARE }}/${{ env.CONFIG_FILE }}
+          📦 文件信息:
+          - 固件镜像 (*.img.gz)
+          - 配置文件 (.config)
+        artifacts: ${{ env.FIRMWARE }}/*
         artifactErrorsFailBuild: false
         replacesArtifacts: true
 
