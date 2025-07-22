@@ -14,8 +14,6 @@ echo "========================="
 #
 git clone -b js https://github.com/sirpdboy/luci-theme-kucat.git  package/luci-theme-kucat
 git clone https://github.com/sirpdboy/luci-app-advancedplus.git  package/luci-app-advancedplus
-
-# 修改主机名字，把Unicorn修改成你喜欢的（不能纯数字或者使用中文）
 echo "src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git;main" >> "feeds.conf.default"
 # Update feeds
 ./scripts/feeds update -a
