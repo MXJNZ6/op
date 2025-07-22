@@ -1,4 +1,4 @@
-name: Build OpenWrt_X86_new
+name: Build OpenWrt_X86_lean
 
 on:
   repository_dispatch:
