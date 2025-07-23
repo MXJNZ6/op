@@ -46,6 +46,7 @@ jobs:
           llvm lrzsz msmtp ninja-build p7zip p7zip-full patch pkgconf python3 python3-pip \
           python3-pyelftools python3-setuptools python3-netifaces qemu-utils rsync scons \
           squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
+        sudo pip3 install netifaces  # 双重保险
         sudo -E systemctl daemon-reload
         sudo -E apt -y autoremove --purge
         sudo -E apt clean
@@ -66,11 +67,11 @@ jobs:
       uses: mxschmitt/action-tmate@v3
       if: inputs.ssh == 'true'
       with:
-        limit-access-to: ${{ github.actor }}  # 仅允许仓库所有者访问
-        timeout-minutes: 60                  # 延长会话超时至60分钟
-        ports: 22                            # 显式指定SSH端口
+        limit-access-to: ${{ github.actor }}
+        timeout-minutes: 60
+        ports: 22
       env:
-        TMATE_SSH_URL: tmate.us.tmate.io     # 使用美国备用服务器
+        TMATE_SSH_URL: tmate.us.tmate.io
 
     - name: 检测SSH活动
       if: inputs.ssh == 'true'
@@ -93,12 +94,12 @@ jobs:
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
 
     - name: 上传config
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4  # 关键修复：升级到v4
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
         name: ${{ env.CONFIG }}config${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE }}
-        retention-days: 7                    # 自动清理过期文件
+        retention-days: 7
 
     - name: 生成发布标签
       id: tag
