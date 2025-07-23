@@ -46,7 +46,7 @@ jobs:
           llvm lrzsz msmtp ninja-build p7zip p7zip-full patch pkgconf python3 python3-pip \
           python3-pyelftools python3-setuptools python3-netifaces qemu-utils rsync scons \
           squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
-        sudo pip3 install netifaces  # 双重保险
+        sudo pip3 install netifaces
         sudo -E systemctl daemon-reload
         sudo -E apt -y autoremove --purge
         sudo -E apt clean
@@ -63,21 +63,21 @@ jobs:
         git clone $REPO_URL -b $REPO_BRANCH openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
-    - name: 启用SSH调试会话
+    - name: 启用SSH调试会话 (无密钥检查)
       uses: mxschmitt/action-tmate@v3
       if: inputs.ssh == 'true'
       with:
-        limit-access-to: ${{ github.actor }}
-        timeout-minutes: 60
-        ports: 22
+        limit-access-to-actor: true
+        connect-timeout-seconds: 3600  # 60分钟超时
       env:
-        TMATE_SSH_URL: tmate.us.tmate.io
+        TMATE_SERVER_HOST: tmate.us.tmate.io  # 美国服务器
+        GITHUB_PUBLIC_KEYS: "none"  # 关键修复：跳过SSH密钥检查
 
     - name: 检测SSH活动
       if: inputs.ssh == 'true'
       run: |
-        echo "##[warning]SSH会话已启动，请及时断开以避免资源占用！"
-        echo "::notice::连接命令已自动生成，请查看上方日志"
+        echo "##[warning]SSH会话已启动（未验证SSH密钥，安全性降低）"
+        echo "::notice::连接命令：ssh $(grep 'ssh session:' $GITHUB_STEP_SUMMARY | cut -d' ' -f3-)"
 
     - name: 提取config
       id: organize
@@ -94,7 +94,7 @@ jobs:
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
 
     - name: 上传config
-      uses: actions/upload-artifact@v4  # 关键修复：升级到v4
+      uses: actions/upload-artifact@v4
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
         name: ${{ env.CONFIG }}config${{ env.FILE_DATE }}
