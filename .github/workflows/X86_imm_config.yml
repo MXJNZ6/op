@@ -63,15 +63,14 @@ jobs:
         git clone $REPO_URL -b $REPO_BRANCH openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
-    - name: 启用SSH调试会话 (无密钥检查)
+    - name: Start tmate session
       uses: mxschmitt/action-tmate@v3
-      if: inputs.ssh == 'true'
       with:
         limit-access-to-actor: true
-        connect-timeout-seconds: 3600  # 60分钟超时
+        connect-timeout-seconds: 3600
       env:
-        TMATE_SERVER_HOST: tmate.us.tmate.io  # 美国服务器
-        GITHUB_PUBLIC_KEYS: "none"  # 关键修复：跳过SSH密钥检查
+        TMATE_SERVER_HOST: sfo1.tmate.io
+        TMATE_USE_HTTPS: "true"
 
     - name: 检测SSH活动
       if: inputs.ssh == 'true'
