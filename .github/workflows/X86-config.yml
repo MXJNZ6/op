@@ -1,31 +1,29 @@
-# config在线生成项目
-
-name: Config_X86
+name: Config_X86_imm
 
 on:
   repository_dispatch:
   workflow_dispatch:
     inputs:
       ssh:
-        description: 'SSH connection to Actions'
+        description: '启用SSH调试连接 (true/false)'
         required: false
         default: 'false'
 
 env:
-  REPO_URL: https://github.com/coolsnowwolf/lede
+  REPO_URL: https://github.com/immortalwrt/immortalwrt
   REPO_BRANCH: master
-  CONFIG_FILE: X86.config
-  DIY_SH: diy-X86.sh
+  CONFIG_FILE: X86_imm.config
+  DIY_SH: diy-imm.sh
   UPLOAD_FIRMWARE: true
   UPLOAD_RELEASE: false
-  CONFIG: X86
+  CONFIG: X86_imm
   TZ: Asia/Shanghai
-  
+
 jobs:
   build:
     runs-on: ubuntu-22.04
     if: github.event.repository.owner.id == github.event.sender.id || ! github.event.sender.id
-    
+
     steps:
     - name: Checkout OpenWrt
       uses: actions/checkout@v4
@@ -43,31 +41,34 @@ jobs:
         sudo -E systemctl daemon-reload
         sudo -E apt -y autoremove --purge
         sudo -E apt clean
-        sudo -E timedatectl set-timezone "Asia/Shanghai"
+        sudo -E timedatectl set-timezone "$TZ"
         sudo mkdir -p /workdir
         sudo chown $USER:$GROUPS /workdir
-        echo "status=success" >> ${GITHUB_OUTPUT}
+        echo "status=success" >> $GITHUB_OUTPUT
         df -Th
-        
+
     - name: 下载固件源码
       working-directory: /workdir
       run: |
         df -hT $PWD
         git clone $REPO_URL -b $REPO_BRANCH openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
-        
-    - name: 加载自定义设置和调整配置
-      run: |
-        chmod +x $DIY_SH
-        cd openwrt
-        $GITHUB_WORKSPACE/$DIY_SH
-        cd -
-        [ -e files ] && mv files openwrt/files
-        [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
 
-    - name: SSH链接管理
-      uses: P3TERX/ssh2actions@v1.0.0
-      if: (github.event.inputs.ssh == 'true' && github.event.inputs.ssh  != 'false') || contains(github.event.action, 'ssh')
+    - name: 启用SSH调试会话
+      uses: mxschmitt/action-tmate@v3
+      if: inputs.ssh == 'true'
+      with:
+        limit-access-to: ${{ github.actor }}  # 仅允许仓库所有者访问
+        timeout-minutes: 60                  # 延长会话超时至60分钟
+        ports: 22                            # 显式指定SSH端口
+      env:
+        TMATE_SSH_URL: tmate.us.tmate.io     # 使用美国备用服务器
+
+    - name: 检测SSH活动
+      if: inputs.ssh == 'true'
+      run: |
+        echo "##[warning]SSH会话已启动，请及时断开以避免资源占用！"
+        echo "::notice::连接命令已自动生成，请查看上方日志"
 
     - name: 提取config
       id: organize
@@ -84,11 +85,12 @@ jobs:
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
 
     - name: 上传config
-      uses: actions/upload-artifact@main
+      uses: actions/upload-artifact@v3
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
         name: ${{ env.CONFIG }}config${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE }}
+        retention-days: 7                    # 自动清理过期文件
 
     - name: 生成发布标签
       id: tag
@@ -97,7 +99,7 @@ jobs:
         echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
         touch release.txt
         echo "status=success" >> $GITHUB_OUTPUT
-        
+
     - name: 上传config文件并发布
       uses: softprops/action-gh-release@v1
       if: steps.tag.outputs.status == 'success' && !cancelled()
@@ -105,5 +107,5 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ steps.tag.outputs.release_tag }}
-        body_path: release.txt
+        body: "ImmortalWrt配置文件自动生成"
         files: ${{ env.FIRMWARE }}/*
