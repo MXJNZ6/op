@@ -5,8 +5,8 @@ on:
     inputs:
       enable_ssh:
         description: 'SSH connection to Actions'
-        required: false
-        default: 'false'
+        required: true
+        default: 'true'
 
 env:
   REPO_URL: https://github.com/immortalwrt/immortalwrt
