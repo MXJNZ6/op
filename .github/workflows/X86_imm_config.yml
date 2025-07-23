@@ -47,9 +47,23 @@ jobs:
     - name: Generate config
       id: config
       run: |
-        cd openwrt
-        [ -f "../$CONFIG_FILE" ] && cp "../$CONFIG_FILE" .config || make defconfig
-        echo "CONFIG_PATH=$(pwd)/.config" >> $GITHUB_ENV
+        cd ${{ env.OPENWRT_DIR }}
+        if [ -f "../$CONFIG_FILE" ]; then
+          cp "../$CONFIG_FILE" .config
+          echo "Using existing config file"
+        else
+          make defconfig
+          echo "Generated default config"
+        fi
+        
+        # 确保文件存在
+        ls -la .config
+        [ -f .config ] || exit 1
+        
+        # 创建专门的上传目录
+        mkdir -p ../config_upload
+        cp .config ../config_upload/
+        echo "CONFIG_PATH=$(pwd)/../config_upload/.config" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: Upload config
