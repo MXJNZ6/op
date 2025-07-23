@@ -1,5 +1,3 @@
-# config在线生成项目
-
 name: Config_X86_imm
 
 on:
@@ -7,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       ssh:
-        description: 'SSH connection to Actions'
+        description: '启用SSH调试连接 (true/false)'
         required: false
         default: 'false'
 
@@ -20,12 +18,12 @@ env:
   UPLOAD_RELEASE: false
   CONFIG: X86_imm
   TZ: Asia/Shanghai
-  
+
 jobs:
   build:
     runs-on: ubuntu-22.04
     if: github.event.repository.owner.id == github.event.sender.id || ! github.event.sender.id
-    
+
     steps:
     - name: Checkout OpenWrt
       uses: actions/checkout@v4
@@ -39,16 +37,24 @@ jobs:
         sudo -E apt update
         sudo -E apt -y purge azure-cli* docker* ghc* zulu* llvm* firefox google* dotnet* powershell* openjdk* mysql* php* mongodb* dotnet* snap*
         sudo -E apt -y full-upgrade
-        sudo -E apt -y install ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache clang cmake cpio curl device-tree-compiler flex gawk gcc-multilib g++-multilib gettext genisoimage git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev libssl-dev libtool llvm lrzsz msmtp ninja-build p7zip p7zip-full patch pkgconf python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
+        sudo -E apt -y install \
+          ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
+          bzip2 ccache clang cmake cpio curl device-tree-compiler flex gawk gcc-multilib \
+          g++-multilib gettext genisoimage git gperf haveged help2man intltool libc6-dev-i386 \
+          libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev \
+          libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev libssl-dev libtool \
+          llvm lrzsz msmtp ninja-build p7zip p7zip-full patch pkgconf python3 python3-pip \
+          python3-pyelftools python3-setuptools python3-netifaces qemu-utils rsync scons \
+          squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
         sudo -E systemctl daemon-reload
         sudo -E apt -y autoremove --purge
         sudo -E apt clean
-        sudo -E timedatectl set-timezone "Asia/Shanghai"
+        sudo -E timedatectl set-timezone "$TZ"
         sudo mkdir -p /workdir
         sudo chown $USER:$GROUPS /workdir
-        echo "status=success" >> ${GITHUB_OUTPUT}
+        echo "status=success" >> $GITHUB_OUTPUT
         df -Th
-        
+
     - name: 下载固件源码
       working-directory: /workdir
       run: |
@@ -56,9 +62,21 @@ jobs:
         git clone $REPO_URL -b $REPO_BRANCH openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
-    - name: SSH链接管理
-      uses: P3TERX/ssh2actions@v1.0.0
-      if: (github.event.inputs.ssh == 'true' && github.event.inputs.ssh  != 'false') || contains(github.event.action, 'ssh')
+    - name: 启用SSH调试会话
+      uses: mxschmitt/action-tmate@v3
+      if: inputs.ssh == 'true'
+      with:
+        limit-access-to: ${{ github.actor }}  # 仅允许仓库所有者访问
+        timeout-minutes: 60                  # 延长会话超时至60分钟
+        ports: 22                            # 显式指定SSH端口
+      env:
+        TMATE_SSH_URL: tmate.us.tmate.io     # 使用美国备用服务器
+
+    - name: 检测SSH活动
+      if: inputs.ssh == 'true'
+      run: |
+        echo "##[warning]SSH会话已启动，请及时断开以避免资源占用！"
+        echo "::notice::连接命令已自动生成，请查看上方日志"
 
     - name: 提取config
       id: organize
@@ -75,11 +93,12 @@ jobs:
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
 
     - name: 上传config
-      uses: actions/upload-artifact@main
+      uses: actions/upload-artifact@v3
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
         name: ${{ env.CONFIG }}config${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE }}
+        retention-days: 7                    # 自动清理过期文件
 
     - name: 生成发布标签
       id: tag
@@ -88,7 +107,7 @@ jobs:
         echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
         touch release.txt
         echo "status=success" >> $GITHUB_OUTPUT
-        
+
     - name: 上传config文件并发布
       uses: softprops/action-gh-release@v1
       if: steps.tag.outputs.status == 'success' && !cancelled()
@@ -96,5 +115,5 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ steps.tag.outputs.release_tag }}
-        body_path: release.txt
+        body: "ImmortalWrt配置文件自动生成"
         files: ${{ env.FIRMWARE }}/*
