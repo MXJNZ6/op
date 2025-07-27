@@ -77,11 +77,23 @@ jobs:
 
     - name: Create release
       uses: softprops/action-gh-release@v1
+      env:
+        CONFIG_FILENAME: ${{ env.FILE_NAME }}_${{ env.COMMIT_HASH }}_${{ env.BUILD_DATE }}.config
       with:
         name: ${{ env.RELEASE_NAME }}
-        tag_name: "config-${FILE_NAME}-${BUILD_DATE}"
+        tag_name: "config-${{ env.FILE_NAME }}-${{ env.BUILD_DATE }}"
         body: |
-               看文件名字
+          ### 配置文件说明
+          📁 文件名：`${{ env.FILE_NAME }}_${{ env.COMMIT_HASH }}_${{ env.BUILD_DATE }}.config`
+      
+          🔍 版本信息：
+          - 提交哈希：`${{ env.COMMIT_HASH }}`
+          - 生成时间：`${{ env.BUILD_DATE }}`（北京时间）
+      
+          ⚙️ 使用方式：
+          1. 下载后重命名为`.config`
+          2. 放置到OpenWrt编译目录
+          3. 运行`make defconfig`
         files: ${{ env.CONFIG_PATH }}
         draft: false
         prerelease: false
