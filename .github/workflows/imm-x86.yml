@@ -81,9 +81,7 @@ jobs:
         name: ${{ env.RELEASE_NAME }}
         tag_name: "config-${FILE_NAME}-${BUILD_DATE}"
         body: |
-          ### Auto-generated config
-          - Commit: ${COMMIT_HASH}
-          - Date: ${BUILD_DATE}
+               看文件名字
         files: ${{ env.CONFIG_PATH }}
         draft: false
         prerelease: false
