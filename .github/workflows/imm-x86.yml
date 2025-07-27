@@ -1,0 +1,59 @@
+name: imm_x86-config
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 23 5 * ?"
+
+env:
+  REPO_URL: https://github.com/immortalwrt/immortalwrt
+  REPO_BRANCH: master
+  CONFIG_FILE: X86_imm.config
+  DIY_SH: diy-imm.sh
+  FILE_NAME: X86
+  TZ: Asia/Shanghai
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    if: github.event.repository.owner.id == github.event.sender.id || !github.event.sender.id
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up environment
+      run: |
+        sudo apt update
+        sudo apt install -y build-essential git libncurses5-dev libssl-dev
+        sudo timedatectl set-timezone "Asia/Shanghai"
+        mkdir -p /mnt/workdir
+        echo "DATE1=$(date "+%Y-%m-%d")" >> $GITHUB_ENV
+
+    - name: Clone source code
+      working-directory: /mnt/workdir
+      run: |
+        git clone $REPO_URL -b $REPO_BRANCH openwrt
+        ln -sf /mnt/workdir/openwrt $GITHUB_WORKSPACE/openwrt
+
+    - name: Apply custom configuration
+      run: |
+        chmod +x $DIY_SH
+        cd openwrt
+        $GITHUB_WORKSPACE/$DIY_SH
+        [ -e $GITHUB_WORKSPACE/$CONFIG_FILE ] && mv $GITHUB_WORKSPACE/$CONFIG_FILE .config
+        make defconfig
+
+    - name: Prepare config artifact
+      id: prepare
+      run: |
+        CONFIG_FILE_NAME="${FILE_NAME}_config_${DATE1}.config"
+        cp "$GITHUB_WORKSPACE/openwrt/.config" "$CONFIG_FILE_NAME"
+        echo "CONFIG_PATH=$PWD/$CONFIG_FILE_NAME" >> $GITHUB_ENV
+
+    - name: Upload config artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: OpenWrt_${FILE_NAME}_config_${DATE1}
+        path: ${{ env.CONFIG_PATH }}
+        retention-days: 90
