@@ -16,12 +16,12 @@ env:
   DELETE_RELEASE: true
   DELETE_ARTIFACTS: true
   KEEP_DAY: 0
-  KEEP_MININUM_RUNS: 1
-  KEEP_MININUM_RELEASE: 5
+  KEEP_MININUM_RUNS: 2  # Changed to keep 2 runs
+  KEEP_MININUM_RELEASE: 2  # Changed to keep 2 releases
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04  # Changed from ubuntu-20.04 to 24.04
     if: github.event.repository.owner.id == github.event.sender.id
 
     steps:
@@ -29,7 +29,6 @@ jobs:
       uses: actions/checkout@main
 
     - name: Delete older releases
-      #uses: dev-drprasad/delete-older-releases@master
       uses: Vucko130/delete-older-releases@v0.2.1
       if: env.DELETE_RELEASE == 'true'
       with:
