@@ -16,44 +16,73 @@ env:
 jobs:
   build:
     runs-on: ubuntu-22.04
-    if: github.event.repository.owner.id == github.event.sender.id || !github.event.sender.id
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     - name: Set up environment
       run: |
+        if ! sudo -n true 2>/dev/null; then
+          echo "::error::No sudo permissions available"
+          exit 1
+        fi
+        
         sudo apt update
-        sudo apt install -y build-essential git libncurses5-dev libssl-dev
-        sudo timedatectl set-timezone "Asia/Shanghai"
-        sudo mkdir -p /workdir
-        echo "DATE1=$(date "+%Y-%m-%d")" >> $GITHUB_ENV
+        sudo apt install -y --no-install-recommends \
+          build-essential \
+          git \
+          libncurses5-dev \
+          libssl-dev \
+          ca-certificates
+        
+        sudo mkdir -p "$HOME/workdir"
+        echo "WORKDIR=$HOME/workdir" >> $GITHUB_ENV
+        echo "DATE1=$(date '+%Y-%m-%d')" >> $GITHUB_ENV
+
+    - name: Prepare scripts
+      run: |
+        chmod +x "$DIY_SH"
+        echo "DIY_SH_PATH=$PWD/$DIY_SH" >> $GITHUB_ENV
+        echo "CONFIG_FILE_PATH=$PWD/$CONFIG_FILE" >> $GITHUB_ENV
 
     - name: Clone source code
-      working-directory: /workdir
+      env:
+        GIT_RETRIES: 3
       run: |
-        git clone $REPO_URL -b $REPO_BRANCH openwrt
-        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+        cd "$WORKDIR"
+        for i in $(seq 1 $GIT_RETRIES); do
+          git clone "$REPO_URL" -b "$REPO_BRANCH" openwrt && break || sleep 10
+          [ $i -eq $GIT_RETRIES ] && exit 1
+        done
 
-    - name: Apply custom configuration
+    - name: Apply configuration
       run: |
-        chmod +x $DIY_SH
-        cd openwrt
-        $GITHUB_WORKSPACE/$DIY_SH
-        [ -e $GITHUB_WORKSPACE/$CONFIG_FILE ] && mv $GITHUB_WORKSPACE/$CONFIG_FILE .config
-        make defconfig
+        cd "$WORKDIR/openwrt"
+        "$DIY_SH_PATH"
+        cp "$CONFIG_FILE_PATH" .config
+        
+        if ! make defconfig; then
+          echo "::error::Failed to generate defconfig"
+          exit 1
+        fi
 
-    - name: Prepare config artifact
-      id: prepare
+    - name: Prepare artifact
       run: |
-        CONFIG_FILE_NAME="${FILE_NAME}_config_${DATE1}.config"
-        cp "$GITHUB_WORKSPACE/openwrt/.config" "$CONFIG_FILE_NAME"
-        echo "CONFIG_PATH=$PWD/$CONFIG_FILE_NAME" >> $GITHUB_ENV
+        CONFIG_FILE_NAME="${FILE_NAME}_config_${DATE1}_$(date +%s).config"
+        OUTPUT_DIR="$WORKDIR/output"
+        
+        mkdir -p "$OUTPUT_DIR"
+        cp "$WORKDIR/openwrt/.config" "$OUTPUT_DIR/$CONFIG_FILE_NAME"
+        echo "ARTIFACT_PATH=$OUTPUT_DIR/$CONFIG_FILE_NAME" >> $GITHUB_ENV
 
-    - name: Upload config artifact
+    - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: OpenWrt_${FILE_NAME}_config_${DATE1}
-        path: ${{ env.CONFIG_PATH }}
+        name: "OpenWrt_${FILE_NAME}_config_${DATE1}"
+        path: ${{ env.ARTIFACT_PATH }}
         retention-days: 90
+        compression-level: 9
