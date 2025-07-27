@@ -143,8 +143,8 @@ jobs:
       uses: ncipollo/release-action@v1
       if: env.UPLOAD_RELEASE == 'true' && steps.organize.outputs.status == 'success' && !cancelled()
       with:
-        name: "OpenWrt_imm ${{ env.FILE_NAME }} Latest"
-        tag: "latest"
+        name: "immortalwrt ${{ env.FILE_NAME }} Latest"
+        tag: "immortalwrt-latest"
         allowUpdates: true
         commit: master
         token: ${{ secrets.GITHUB_TOKEN }}
