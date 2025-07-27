@@ -143,13 +143,13 @@ jobs:
       uses: ncipollo/release-action@v1
       if: env.UPLOAD_RELEASE == 'true' && steps.organize.outputs.status == 'success' && !cancelled()
       with:
-        name: "OpenWrt ${{ env.FILE_NAME }} Latest"
-        tag: "latest"
+        name: "OpenWrt_lean ${{ env.FILE_NAME }} Latest"
+        tag: "lean-latest"
         allowUpdates: true
         commit: master
         token: ${{ secrets.GITHUB_TOKEN }}
         body: |
-          OpenWrt ${{ env.FILE_NAME }} 最新编译版本
+          Openwrt_lean ${{ env.FILE_NAME }} 最新编译版本
           📅 编译时间: ${{ env.DATE }}
           🔧 配置文件: ${{ env.CONFIG_FILE }}
           📦 文件信息:
