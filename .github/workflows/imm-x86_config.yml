@@ -80,8 +80,8 @@ jobs:
       env:
         CONFIG_FILENAME: ${{ env.FILE_NAME }}_${{ env.COMMIT_HASH }}_${{ env.BUILD_DATE }}.config
       with:
-        name: ${{ env.RELEASE_NAME }}
-        tag_name: "config-${{ env.FILE_NAME }}-${{ env.BUILD_DATE }}"
+        name: ImmortalWRT X86 Config
+        tag_name: "imm-config"
         body: |
           ### 配置文件说明
           📁 文件名：`${{ env.FILE_NAME }}_${{ env.COMMIT_HASH }}_${{ env.BUILD_DATE }}.config`
