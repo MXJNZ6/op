@@ -29,7 +29,7 @@ jobs:
         sudo chown -R $USER:$USER /mnt/workdir
         echo "WORKDIR=/mnt/workdir" >> $GITHUB_ENV
 
-    - name: Install minimal dependencies
+    - name: Install dependencies
       run: |
         sudo apt update
         sudo apt install -y \
@@ -48,8 +48,10 @@ jobs:
           [ $i -eq 3 ] && { echo "::error::Failed to clone repository"; exit 1; }
         done
 
+        cd openwrt
+        echo "COMMIT_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+        echo "BUILD_DATE=$(date '+%Y-%m-%d_%H%M%S')" >> $GITHUB_ENV
         ln -sf /mnt/workdir/openwrt $GITHUB_WORKSPACE/openwrt
-        echo "BUILD_DATE=$(date '+%Y%m%d')" >> $GITHUB_ENV
 
     - name: Apply configuration
       run: |
@@ -61,13 +63,28 @@ jobs:
 
     - name: Package config
       run: |
-        OUTPUT_NAME="${FILE_NAME}_config_${BUILD_DATE}.config"
+        OUTPUT_NAME="${FILE_NAME}_${COMMIT_HASH}_${BUILD_DATE}.config"
         cp "/mnt/workdir/openwrt/.config" "$OUTPUT_NAME"
+        echo "RELEASE_NAME=ImmortalWRT ${FILE_NAME} Config ${BUILD_DATE}" >> $GITHUB_ENV
         echo "CONFIG_PATH=$PWD/$OUTPUT_NAME" >> $GITHUB_ENV
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: ImmortalWRT_${FILE_NAME}_Config
+        name: ${{ env.RELEASE_NAME }}
         path: ${{ env.CONFIG_PATH }}
         retention-days: 30
+
+    - name: Create release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: ${{ env.RELEASE_NAME }}
+        tag_name: "config-${FILE_NAME}-${BUILD_DATE}"
+        body: |
+          ### Auto-generated config
+          - Commit: ${COMMIT_HASH}
+          - Date: ${BUILD_DATE}
+        files: ${{ env.CONFIG_PATH }}
+        draft: false
+        prerelease: false
+        token: ${{ secrets.GITHUB_TOKEN }}
