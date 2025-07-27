@@ -68,13 +68,6 @@ jobs:
         echo "RELEASE_NAME=ImmortalWRT ${FILE_NAME} Config ${BUILD_DATE}" >> $GITHUB_ENV
         echo "CONFIG_PATH=$PWD/$OUTPUT_NAME" >> $GITHUB_ENV
 
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ env.RELEASE_NAME }}
-        path: ${{ env.CONFIG_PATH }}
-        retention-days: 30
-
     - name: Create release
       uses: softprops/action-gh-release@v1
       env:
@@ -84,11 +77,12 @@ jobs:
         tag_name: "imm-config"
         body: |
           ### 配置文件说明
-          📁 文件名：`${{ env.FILE_NAME }}_${{ env.COMMIT_HASH }}_${{ env.BUILD_DATE }}.config`
+          📁 最新版文件名：`${{ env.FILE_NAME }}_${{ env.COMMIT_HASH }}_${{ env.BUILD_DATE }}.config`
       
           🔍 版本信息：
-          - 提交哈希：`${{ env.COMMIT_HASH }}`
-          - 生成时间：`${{ env.BUILD_DATE }}`（北京时间）
+          - 最新版提交哈希：`${{ env.COMMIT_HASH }}`
+          - 最新版生成时间：`${{ env.BUILD_DATE }}`（北京时间）
+          - 文件命名包含config文件生成时间，可按需下载
       
           ⚙️ 使用方式：
           1. 下载后重命名为`.config`
