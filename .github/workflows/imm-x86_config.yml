@@ -6,7 +6,7 @@ on:
     inputs:
       debug_enabled:
         type: boolean
-        description: '启用浏览器终端调试会话'
+        description: '启用 Codespaces 调试会话'
         required: false
         default: false
   pull_request:
@@ -55,7 +55,7 @@ jobs:
         for i in {1..3}; do
           git clone "$REPO_URL" -b "$REPO_BRANCH" openwrt && break || \
           { echo "::warning::Clone attempt $i/3 failed, retrying..."; sleep 5; }
-          [ $i - eq 3 ] && { echo "::error::Failed to clone repository"; exit 1; }
+          [ $i -eq 3 ] && { echo "::error::Failed to clone repository"; exit 1; }
         done
 
         cd openwrt
@@ -70,13 +70,16 @@ jobs:
         "$GITHUB_WORKSPACE/$DIY_SH"
         cp "$GITHUB_WORKSPACE/$CONFIG_FILE" .config
 
-    - name: 启动浏览器终端调试会话
+    - name: 准备 Codespaces 调试环境
       if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
-      uses: actions/terminal@v1
-      with:
-        timeout: 15
-        forward-ports: 22
-        workdir: /mnt/workdir/openwrt
+      run: |
+        echo "⏳ 请手动创建 Codespace 进行调试："
+        echo "1. 访问 https://github.com/codespaces"
+        echo "2. 选择当前仓库 ($GITHUB_REPOSITORY)"
+        echo "3. 点击 'New codespace'"
+        echo "4. 工作目录已挂载到 /workspaces/$GITHUB_REPOSITORY/openwrt"
+        echo "🔍 调试完成后，请在此页面按 Ctrl+C 终止工作流..."
+        sleep 86400  # 保持24小时等待（实际可手动停止）
 
     - name: Package config
       run: |
