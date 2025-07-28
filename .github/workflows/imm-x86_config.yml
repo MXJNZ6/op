@@ -45,10 +45,8 @@ jobs:
     - name: Apply Base Config
       working-directory: ${{ env.BUILD_DIR }}/openwrt
       run: |
-        # cp "$GITHUB_WORKSPACE/X86_imm.config" .config
         chmod +x "$GITHUB_WORKSPACE/diy-imm.sh"
         "$GITHUB_WORKSPACE/diy-imm.sh"
-    #     make defconfig
 
     # ================ 交互调试 ================
     - name: Browser-based Debug Terminal
@@ -59,9 +57,9 @@ jobs:
           echo "🛠️ 交互调试终端已激活"
           echo "工作目录: $(pwd)"
           echo "修改配置后执行:"
-          echo "  make defconfig && exit"
-          bash
-        waitFor: exit
+          echo "  make defconfig"
+          echo "  exit"
+          tail -f /dev/null  # 保持会话活跃
 
     # ================ 成品生成 ================
     - name: Generate Final Config
@@ -85,12 +83,11 @@ jobs:
         name: "ImmortalWRT_config"
         tag_name: "config-imm"
         body: |
-                 ### 配置文件说明
-                 - 文件命名包含config文件生成时间，可按需下载
-                 ⚙️ 使用方式：
-                 1. 下载后重命名为`.config`
-                 2. 放置到OpenWrt编译目录
-                 3. 运行`make defconfig`
-                    ```
+          ### 配置文件说明
+          - 文件命名包含config文件生成时间，可按需下载
+          ⚙️ 使用方式：
+          1. 下载后重命名为`.config`
+          2. 放置到OpenWrt编译目录
+          3. 运行`make defconfig`
         files: ${{ env.CONFIG_PATH }}
         token: ${{ secrets.GITHUB_TOKEN }}
