@@ -32,7 +32,6 @@ jobs:
 
     - name: Setup dual workspace
       run: |
-        # 设置标准工作目录
         mkdir -p /workspaces/$GITHUB_REPOSITORY/openwrt
         sudo mkdir -p /mnt/workdir
         sudo chown -R $USER:$USER /mnt/workdir
@@ -72,19 +71,21 @@ jobs:
       run: |
         echo "🔧 调试模式已激活" | tee debug_instructions.txt
         echo "1. 访问 https://github.com/codespaces/new?repo=$GITHUB_REPOSITORY" >> debug_instructions.txt
-        echo "2. 启动后运行以下命令保持同步：" >> debug_instructions.txt
-        echo "   while true; do unison -auto -batch /workspaces/$GITHUB_REPOSITORY/openwrt /mnt/workdir/openwrt; sleep 5; done" >> debug_instructions.txt
-        echo "3. 终止调试请执行：" >> debug_instructions.txt
-        echo "   curl -X POST -H \"Authorization: token ${{ secrets.GITHUB_TOKEN }}\" \\" >> debug_instructions.txt
-        echo "     https://api.github.com/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/cancel" >> debug_instructions.txt
+        echo "2. 启动后运行同步命令：" >> debug_instructions.txt
+        echo "   while true; do unison -auto /workspaces/$GITHUB_REPOSITORY/openwrt /mnt/workdir/openwrt; sleep 5; done" >> debug_instructions.txt
+        echo "3. 终止调试：" >> debug_instructions.txt
+        echo "   touch /mnt/workdir/DEBUG_DONE" >> debug_instructions.txt
         
-        # 上传调试说明
-        echo "::warning::调试指南已生成，请查看Artifacts区域的debug-guide"
-        actions/upload-artifact@v3 --name debug-guide --path debug_instructions.txt
+        # 上传新版Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-guide
+          path: debug_instructions.txt
         
-        # 保持运行（每10分钟检测是否继续）
-        while sleep 600; do
-          [ -f "/mnt/workdir/DEBUG_CONTINUE" ] && break
+        # 等待继续信号
+        while ! [ -f "/mnt/workdir/DEBUG_DONE" ]; do
+          sleep 10
+          echo "等待调试完成...(创建/mnt/workdir/DEBUG_DONE文件继续)"
         done
 
     - name: Generate config package
@@ -92,31 +93,28 @@ jobs:
         OUTPUT_NAME="${FILE_NAME}-${COMMIT_HASH}-${BUILD_DATE}.config"
         cp "/mnt/workdir/openwrt/.config" "$OUTPUT_NAME"
         
-        # 调试模式下输出特殊提示
         if ${{ inputs.debug_enabled }}; then
-          echo "::notice::📁 调试模式配置文件路径："
+          echo "::notice::📁 调试模式配置路径："
           echo "/mnt/workdir/openwrt/.config"
-          echo "或通过Artifacts下载：$OUTPUT_NAME"
+          echo "或下载Artifact: $OUTPUT_NAME"
         fi
         
         echo "CONFIG_PATH=$PWD/$OUTPUT_NAME" >> $GITHUB_ENV
 
     - name: Upload config artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: openwrt-config
         path: ${{ env.CONFIG_PATH }}
-        retention-days: 7
+        retention-days: 3
 
     - name: Create release
       if: ${{ !inputs.debug_enabled }}
       uses: softprops/action-gh-release@v1
       with:
-        name: "ImmortalWRT ${{ env.FILE_NAME }} Config"
-        tag_name: "config-${{ env.BUILD_DATE }}"
+        name: "ImmortalWRT-Config"
+        tag_name: "imm-config"
         body: |
-          自动生成的配置文件：
-          - 版本: ${{ env.COMMIT_HASH }}
-          - 时间: ${{ env.BUILD_DATE }}
+          自动生成的配置文件
         files: ${{ env.CONFIG_PATH }}
         token: ${{ secrets.GITHUB_TOKEN }}
