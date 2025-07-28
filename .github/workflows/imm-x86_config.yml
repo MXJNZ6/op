@@ -3,6 +3,18 @@ name: imm_x86-config
 on:
   repository_dispatch:
   workflow_dispatch:
+    inputs:
+      debug_enabled:
+        type: boolean
+        description: '启用tmate调试会话(SSH连接功能)'
+        required: false
+        default: false
+  pull_request:
+  push:
+    branches: [ main, master ]
+    paths:
+      - '**.config'
+      - '**.sh'
 #  schedule:
 #    - cron: "0 23 5 * ?"
 
@@ -59,7 +71,12 @@ jobs:
         chmod +x "$GITHUB_WORKSPACE/$DIY_SH"
         "$GITHUB_WORKSPACE/$DIY_SH"
         cp "$GITHUB_WORKSPACE/$CONFIG_FILE" .config
-        make defconfig || { echo "::error::Failed to generate defconfig"; exit 1; }
+   #     make defconfig || { echo "::error::Failed to generate defconfig"; exit 1; }
+
+    - name: 开启 SSH 调试会话 (Start SSH debug session)
+      if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
+      uses: mxschmitt/action-tmate@v3
+      timeout-minutes: 15
 
     - name: Package config
       run: |
