@@ -2,13 +2,7 @@ name: ImmortalWRT Config Master
 
 on:
   workflow_dispatch:
-    inputs:
-      interactive_debug:
-        type: boolean
-        description: '启用浏览器交互调试'
-        required: false
-        default: false
-
+  
 env:
   BUILD_DIR: /mnt/immortal_build
   REPO_URL: https://github.com/immortalwrt/immortalwrt
@@ -61,56 +55,6 @@ jobs:
       run: |
         chmod +x "$GITHUB_WORKSPACE/diy-imm.sh"
         "$GITHUB_WORKSPACE/diy-imm.sh"
-
-    - name: 交互式调试
-      if: ${{ inputs.interactive_debug }}
-      working-directory: ${{ env.BUILD_DIR }}/openwrt
-      run: |
-        # 创建调试脚本
-        cat > debug_commands.sh << 'EOF'
-        #!/bin/bash
-        set -e
-        
-        while true; do
-          echo
-          echo "交互式调试模式已激活"
-          echo "工作目录: $(pwd)"
-          echo "可用命令:"
-          echo "  1. menuconfig    - 配置选项"
-          echo "  2. defconfig     - 生成配置"
-          echo "  3. save          - 保存配置并继续"
-          echo "  4. exit          - 不保存配置退出"
-          echo
-          
-          read -p "请输入命令编号 [1-4]: " choice
-          
-          case $choice in
-            1)
-              make menuconfig
-              ;;
-            2)
-              make defconfig
-              ;;
-            3)
-              echo "配置已保存，继续工作流..."
-              exit 0
-              ;;
-            4)
-              echo "退出调试模式，不保存配置..."
-              exit 1
-              ;;
-            *)
-              echo "无效选择，请重试"
-              ;;
-          esac
-        done
-        EOF
-        
-        chmod +x debug_commands.sh
-        
-        # 执行调试脚本
-        ./debug_commands.sh
-      shell: bash {0} # 禁用管道fail-fast，允许交互式输入
 
     - name: 生成配置文件
       if: success() || failure()
