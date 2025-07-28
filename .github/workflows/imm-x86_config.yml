@@ -20,19 +20,36 @@ jobs:
     timeout-minutes: 240
 
     steps:
-    # ================ 环境初始化 ================
-    - name: Checkout Configurations
+    - name: 检出配置文件
       uses: actions/checkout@v4
 
-    - name: Setup ImmortalWRT Build Environment
+    - name: 设置构建环境
       run: |
-        sudo bash -c 'bash <(curl -s https://build-scripts.immortalwrt.org/init_build_environment.sh)'
+        # 安装必要的依赖
+        sudo apt-get update -y
+        sudo apt-get install -y \
+          build-essential \
+          git \
+          python3 \
+          python3-distutils \
+          python3-setuptools \
+          ncurses-dev \
+          gawk \
+          gettext \
+          libssl-dev \
+          xsltproc \
+          rsync \
+          unzip \
+          file \
+          wget \
+          nodejs \
+          npm
+        # 创建并设置构建目录权限
         sudo mkdir -p ${{ env.BUILD_DIR }}
         sudo chown -R $USER:$USER ${{ env.BUILD_DIR }}
         df -h
 
-    # ================ 源码准备 ================
-    - name: Clone Source Code
+    - name: 克隆源码
       working-directory: ${{ env.BUILD_DIR }}
       run: |
         git clone --depth=1 --single-branch -b ${{ env.REPO_BRANCH }} \
@@ -41,43 +58,78 @@ jobs:
         echo "COMMIT_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
         echo "BUILD_DATE=$(date '+%Y%m%d-%H%M%S')" >> $GITHUB_ENV
 
-    # ================ 配置初始化 ================
-    - name: Apply Base Config
+    - name: 应用配置
       working-directory: ${{ env.BUILD_DIR }}/openwrt
       run: |
         chmod +x "$GITHUB_WORKSPACE/diy-imm.sh"
         "$GITHUB_WORKSPACE/diy-imm.sh"
 
-    # ================ 交互调试 ================
-    - name: Browser-based Debug Terminal
+    - name: 交互式调试
       if: ${{ inputs.interactive_debug }}
-      uses: devcontainers/ci@v0.3
-      with:
-        runCmd: |
-          echo "🛠️ 交互调试终端已激活"
-          echo "工作目录: $(pwd)"
-          echo "修改配置后执行:"
-          echo "  make defconfig"
-          echo "  exit"
-          tail -f /dev/null  # 保持会话活跃
+      working-directory: ${{ env.BUILD_DIR }}/openwrt
+      run: |
+        # 安装 web 终端工具
+        sudo npm install -g ttyd
+        
+        # 创建调试脚本
+        cat > debug_session.sh << 'EOF'
+        #!/bin/bash
+        echo "交互式调试模式已激活"
+        echo "工作目录: $(pwd)"
+        echo "执行以下命令进行调试:"
+        echo "  1. make menuconfig  # 配置选项"
+        echo "  2. make defconfig   # 生成配置"
+        echo "  3. exit             # 完成后退出"
+        
+        # 保存当前配置
+        cp .config .config.bak
+        
+        # 启动 bash 会话
+        bash
+        
+        # 检查配置是否更改
+        if ! cmp -s .config .config.bak; then
+          echo "配置已更新，将使用新配置生成最终文件"
+        else
+          echo "配置未更改，将使用原始配置生成最终文件"
+        fi
+        EOF
+        
+        chmod +x debug_session.sh
+        
+        # 启动 web 终端服务器
+        echo "启动调试服务器，访问下方 URL 进行调试:"
+        echo "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        echo "点击 'Interactive debug' 步骤的 'View raw logs' 查看完整日志"
+        
+        # 以非阻塞方式启动 ttyd
+        ttyd -p 8080 ./debug_session.sh &
+        
+        # 保存进程 ID
+        TTYD_PID=$!
+        
+        # 等待调试完成信号
+        while ps -p $TTYD_PID > /dev/null; do
+          sleep 1
+        done
+      env:
+        TERM: xterm-256color
 
-    # ================ 成品生成 ================
-    - name: Generate Final Config
+    - name: 生成配置文件
       working-directory: ${{ env.BUILD_DIR }}/openwrt
       run: |
         make defconfig
-        FINAL_CONFIG="immortalwrt_${FILE_NAME}_${COMMIT_HASH}_${BUILD_DATE}.config"
+        FINAL_CONFIG="immortalwrt_${{ github.sha }}_${{ env.BUILD_DATE }}.config"
         cp .config "$GITHUB_WORKSPACE/$FINAL_CONFIG"
         echo "CONFIG_PATH=$GITHUB_WORKSPACE/$FINAL_CONFIG" >> $GITHUB_ENV
 
-    # ================ 发布管理 ================
-    - name: Upload Artifact
+    - name: 上传配置文件
       uses: actions/upload-artifact@v4
       with:
         name: immortal-config
         path: ${{ env.CONFIG_PATH }}
 
-    - name: Create Release
+    - name: 创建 GitHub Release
       uses: softprops/action-gh-release@v1
       with:
         name: "ImmortalWRT_config"
