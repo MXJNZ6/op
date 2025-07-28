@@ -41,10 +41,7 @@ jobs:
           rsync \
           unzip \
           file \
-          wget \
-          nodejs \
-          npm \
-          netcat
+          wget
         # 创建并设置构建目录权限
         sudo mkdir -p ${{ env.BUILD_DIR }}
         sudo chown -R $USER:$USER ${{ env.BUILD_DIR }}
@@ -69,70 +66,54 @@ jobs:
       if: ${{ inputs.interactive_debug }}
       working-directory: ${{ env.BUILD_DIR }}/openwrt
       run: |
-        # 安装 web 终端工具
-        sudo npm install -g ttyd
-        
         # 创建调试脚本
-        cat > debug_session.sh << 'EOF'
+        cat > debug_commands.sh << 'EOF'
         #!/bin/bash
-        echo "交互式调试模式已激活"
-        echo "工作目录: $(pwd)"
-        echo "执行以下命令进行调试:"
-        echo "  1. make menuconfig  # 配置选项"
-        echo "  2. make defconfig   # 生成配置"
-        echo "  3. exit             # 完成后退出"
+        set -e
         
-        # 保存当前配置
-        cp .config .config.bak
-        
-        # 启动 bash 会话
-        bash
-        
-        # 检查配置是否更改
-        if ! cmp -s .config .config.bak; then
-          echo "配置已更新，将使用新配置生成最终文件"
-        else
-          echo "配置未更改，将使用原始配置生成最终文件"
-        fi
-        
-        # 创建退出信号文件
-        touch /tmp/debug_complete
-        EOF
-        
-        chmod +x debug_session.sh
-        
-        # 启动 web 终端服务器
-        echo "启动调试服务器..."
-        echo "请在浏览器中访问以下 URL 进行调试:"
-        echo "https://${{ github.run_id }}-${{ github.run_number }}.github.workflow.run"
-        
-        # 以非阻塞方式启动 ttyd
-        ttyd -p 8080 ./debug_session.sh &
-        
-        # 保存进程 ID
-        TTYD_PID=$!
-        
-        # 创建等待脚本
-        cat > wait_for_debug.sh << 'EOF'
-        #!/bin/bash
-        while [ ! -f /tmp/debug_complete ]; do
-          sleep 1
+        while true; do
+          echo
+          echo "交互式调试模式已激活"
+          echo "工作目录: $(pwd)"
+          echo "可用命令:"
+          echo "  1. menuconfig    - 配置选项"
+          echo "  2. defconfig     - 生成配置"
+          echo "  3. save          - 保存配置并继续"
+          echo "  4. exit          - 不保存配置退出"
+          echo
+          
+          read -p "请输入命令编号 [1-4]: " choice
+          
+          case $choice in
+            1)
+              make menuconfig
+              ;;
+            2)
+              make defconfig
+              ;;
+            3)
+              echo "配置已保存，继续工作流..."
+              exit 0
+              ;;
+            4)
+              echo "退出调试模式，不保存配置..."
+              exit 1
+              ;;
+            *)
+              echo "无效选择，请重试"
+              ;;
+          esac
         done
         EOF
         
-        chmod +x wait_for_debug.sh
+        chmod +x debug_commands.sh
         
-        # 等待调试完成
-        echo "等待调试完成..."
-        ./wait_for_debug.sh
-        
-        # 清理
-        kill $TTYD_PID
-        wait $TTYD_PID 2>/dev/null
-      env:
-        TERM: xterm-256color
+        # 执行调试脚本
+        ./debug_commands.sh
+      shell: bash {0} # 禁用管道fail-fast，允许交互式输入
 
     - name: 生成配置文件
+      if: success() || failure()
       working-directory: ${{ env.BUILD_DIR }}/openwrt
       run: |
         make defconfig
