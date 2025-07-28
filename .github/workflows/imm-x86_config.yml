@@ -6,7 +6,7 @@ on:
     inputs:
       debug_enabled:
         type: boolean
-        description: '启用tmate调试会话(SSH连接功能)'
+        description: '启用浏览器终端调试会话'
         required: false
         default: false
   pull_request:
@@ -15,8 +15,6 @@ on:
     paths:
       - '**.config'
       - '**.sh'
-#  schedule:
-#    - cron: "0 23 5 * ?"
 
 env:
   REPO_URL: https://github.com/immortalwrt/immortalwrt
@@ -57,7 +55,7 @@ jobs:
         for i in {1..3}; do
           git clone "$REPO_URL" -b "$REPO_BRANCH" openwrt && break || \
           { echo "::warning::Clone attempt $i/3 failed, retrying..."; sleep 5; }
-          [ $i -eq 3 ] && { echo "::error::Failed to clone repository"; exit 1; }
+          [ $i - eq 3 ] && { echo "::error::Failed to clone repository"; exit 1; }
         done
 
         cd openwrt
@@ -71,12 +69,14 @@ jobs:
         chmod +x "$GITHUB_WORKSPACE/$DIY_SH"
         "$GITHUB_WORKSPACE/$DIY_SH"
         cp "$GITHUB_WORKSPACE/$CONFIG_FILE" .config
-   #     make defconfig || { echo "::error::Failed to generate defconfig"; exit 1; }
 
-    - name: 开启 SSH 调试会话 (Start SSH debug session)
+    - name: 启动浏览器终端调试会话
       if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
-      uses: mxschmitt/action-tmate@v3
-      timeout-minutes: 15
+      uses: actions/terminal@v1
+      with:
+        timeout: 15
+        forward-ports: 22
+        workdir: /mnt/workdir/openwrt
 
     - name: Package config
       run: |
