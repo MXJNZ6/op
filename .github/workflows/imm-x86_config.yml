@@ -1,120 +1,96 @@
-name: ImmortalWRT X86 Config Builder
+name: ImmortalWRT Config Master
 
 on:
   workflow_dispatch:
     inputs:
-      debug_enabled:
+      interactive_debug:
         type: boolean
-        description: '启用调试模式（进入Codespaces交互调试）'
+        description: '启用浏览器交互调试'
         required: false
         default: false
-  push:
-    branches: [main, master]
-    paths: ['**.config', '**.sh']
 
 env:
+  BUILD_DIR: /mnt/immortal_build
   REPO_URL: https://github.com/immortalwrt/immortalwrt
   REPO_BRANCH: master
-  CONFIG_FILE: X86_imm.config
-  DIY_SH: diy-imm.sh
-  FILE_NAME: X86
-  TZ: Asia/Shanghai
 
 jobs:
-  build:
+  config_production:
     runs-on: ubuntu-22.04
-    timeout-minutes: 120
+    timeout-minutes: 240
+
     steps:
-    - name: Checkout repository
+    # ================ 环境初始化 ================
+    - name: Checkout Configurations
       uses: actions/checkout@v4
-      with:
-        path: source
 
-    - name: Setup dual workspace
+    - name: Setup ImmortalWRT Build Environment
       run: |
-        mkdir -p /workspaces/$GITHUB_REPOSITORY/openwrt
-        sudo mkdir -p /mnt/workdir
-        sudo chown -R $USER:$USER /mnt/workdir
-        ln -sf /workspaces/$GITHUB_REPOSITORY/openwrt /mnt/workdir/openwrt
-        echo "WORKDIR=/mnt/workdir" >> $GITHUB_ENV
+        sudo bash -c 'bash <(curl -s https://build-scripts.immortalwrt.org/init_build_environment.sh)'
+        sudo mkdir -p ${{ env.BUILD_DIR }}
+        sudo chown -R $USER:$USER ${{ env.BUILD_DIR }}
+        df -h
 
-    - name: Install build dependencies
+    # ================ 源码准备 ================
+    - name: Clone Source Code
+      working-directory: ${{ env.BUILD_DIR }}
       run: |
-        sudo apt update && sudo apt install -y \
-          build-essential \
-          libncurses5-dev \
-          libssl-dev \
-          git \
-          make \
-          unison
-
-    - name: Clone source code
-      working-directory: /mnt/workdir
-      run: |
-        git clone --depth=1 "$REPO_URL" -b "$REPO_BRANCH" openwrt || \
-        { echo "::error::克隆源码失败"; exit 1; }
+        git clone --depth=1 --single-branch -b ${{ env.REPO_BRANCH }} \
+          ${{ env.REPO_URL }} openwrt
         cd openwrt
         echo "COMMIT_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
         echo "BUILD_DATE=$(date '+%Y%m%d-%H%M%S')" >> $GITHUB_ENV
 
-    - name: Apply configuration
-      working-directory: /mnt/workdir/openwrt
+    # ================ 配置初始化 ================
+    - name: Apply Base Config
+      working-directory: ${{ env.BUILD_DIR }}/openwrt
       run: |
-        cp "$GITHUB_WORKSPACE/source/$CONFIG_FILE" .config
-        [ -f "$GITHUB_WORKSPACE/source/$DIY_SH" ] && {
-          chmod +x "$GITHUB_WORKSPACE/source/$DIY_SH"
-          "$GITHUB_WORKSPACE/source/$DIY_SH"
-        }
+        # cp "$GITHUB_WORKSPACE/X86_imm.config" .config
+        chmod +x "$GITHUB_WORKSPACE/diy-imm.sh"
+        "$GITHUB_WORKSPACE/diy-imm.sh"
+    #     make defconfig
 
-    - name: Start debug session
-      if: ${{ inputs.debug_enabled }}
+    # ================ 交互调试 ================
+    - name: Browser-based Debug Terminal
+      if: ${{ inputs.interactive_debug }}
+      uses: devcontainers/ci@v0.3
+      with:
+        runCmd: |
+          echo "🛠️ 交互调试终端已激活"
+          echo "工作目录: $(pwd)"
+          echo "修改配置后执行:"
+          echo "  make defconfig && exit"
+          bash
+        waitFor: exit
+
+    # ================ 成品生成 ================
+    - name: Generate Final Config
+      working-directory: ${{ env.BUILD_DIR }}/openwrt
       run: |
-        echo "🔧 调试模式已激活" | tee debug_instructions.txt
-        echo "1. 访问 https://github.com/codespaces/new?repo=$GITHUB_REPOSITORY" >> debug_instructions.txt
-        echo "2. 启动后运行同步命令：" >> debug_instructions.txt
-        echo "   while true; do unison -auto /workspaces/$GITHUB_REPOSITORY/openwrt /mnt/workdir/openwrt; sleep 5; done" >> debug_instructions.txt
-        echo "3. 终止调试：" >> debug_instructions.txt
-        echo "   touch /mnt/workdir/DEBUG_DONE" >> debug_instructions.txt
-        
-        # 上传新版Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: debug-guide
-          path: debug_instructions.txt
-        
-        # 等待继续信号
-        while ! [ -f "/mnt/workdir/DEBUG_DONE" ]; do
-          sleep 10
-          echo "等待调试完成...(创建/mnt/workdir/DEBUG_DONE文件继续)"
-        done
+        make defconfig
+        FINAL_CONFIG="immortalwrt_${FILE_NAME}_${COMMIT_HASH}_${BUILD_DATE}.config"
+        cp .config "$GITHUB_WORKSPACE/$FINAL_CONFIG"
+        echo "CONFIG_PATH=$GITHUB_WORKSPACE/$FINAL_CONFIG" >> $GITHUB_ENV
 
-    - name: Generate config package
-      run: |
-        OUTPUT_NAME="${FILE_NAME}-${COMMIT_HASH}-${BUILD_DATE}.config"
-        cp "/mnt/workdir/openwrt/.config" "$OUTPUT_NAME"
-        
-        if ${{ inputs.debug_enabled }}; then
-          echo "::notice::📁 调试模式配置路径："
-          echo "/mnt/workdir/openwrt/.config"
-          echo "或下载Artifact: $OUTPUT_NAME"
-        fi
-        
-        echo "CONFIG_PATH=$PWD/$OUTPUT_NAME" >> $GITHUB_ENV
-
-    - name: Upload config artifact
+    # ================ 发布管理 ================
+    - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: openwrt-config
+        name: immortal-config
         path: ${{ env.CONFIG_PATH }}
-        retention-days: 3
 
-    - name: Create release
-      if: ${{ !inputs.debug_enabled }}
+    - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
-        name: "ImmortalWRT-Config"
-        tag_name: "imm-config"
+        name: "ImmortalWRT_config"
+        tag_name: "config-imm"
         body: |
-          自动生成的配置文件
+                 ### 配置文件说明
+                 - 文件命名包含config文件生成时间，可按需下载
+                 ⚙️ 使用方式：
+                 1. 下载后重命名为`.config`
+                 2. 放置到OpenWrt编译目录
+                 3. 运行`make defconfig`
+                    ```
         files: ${{ env.CONFIG_PATH }}
         token: ${{ secrets.GITHUB_TOKEN }}
