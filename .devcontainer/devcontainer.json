@@ -1,0 +1,12 @@
+{
+  "name": "ImmortalWRT Build Environment",
+  "image": "ubuntu:22.04",
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.10"
+    }
+  },
+  "postCreateCommand": "bash <(curl -s https://build-scripts.immortalwrt.org/init_build_environment.sh)"
+}
