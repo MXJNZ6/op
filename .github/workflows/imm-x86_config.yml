@@ -43,7 +43,8 @@ jobs:
           file \
           wget \
           nodejs \
-          npm
+          npm \
+          netcat
         # 创建并设置构建目录权限
         sudo mkdir -p ${{ env.BUILD_DIR }}
         sudo chown -R $USER:$USER ${{ env.BUILD_DIR }}
@@ -93,14 +94,17 @@ jobs:
         else
           echo "配置未更改，将使用原始配置生成最终文件"
         fi
+        
+        # 创建退出信号文件
+        touch /tmp/debug_complete
         EOF
         
         chmod +x debug_session.sh
         
         # 启动 web 终端服务器
-        echo "启动调试服务器，访问下方 URL 进行调试:"
-        echo "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-        echo "点击 'Interactive debug' 步骤的 'View raw logs' 查看完整日志"
+        echo "启动调试服务器..."
+        echo "请在浏览器中访问以下 URL 进行调试:"
+        echo "https://${{ github.run_id }}-${{ github.run_number }}.github.workflow.run"
         
         # 以非阻塞方式启动 ttyd
         ttyd -p 8080 ./debug_session.sh &
@@ -108,10 +112,23 @@ jobs:
         # 保存进程 ID
         TTYD_PID=$!
         
-        # 等待调试完成信号
-        while ps -p $TTYD_PID > /dev/null; do
+        # 创建等待脚本
+        cat > wait_for_debug.sh << 'EOF'
+        #!/bin/bash
+        while [ ! -f /tmp/debug_complete ]; do
           sleep 1
         done
+        EOF
+        
+        chmod +x wait_for_debug.sh
+        
+        # 等待调试完成
+        echo "等待调试完成..."
+        ./wait_for_debug.sh
+        
+        # 清理
+        kill $TTYD_PID
+        wait $TTYD_PID 2>/dev/null
       env:
         TERM: xterm-256color
 
