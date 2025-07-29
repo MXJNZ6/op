@@ -13,7 +13,7 @@ env:
   DIY_SH: diy-imm.sh
   UPLOAD_FIRMWARE: true
   UPLOAD_RELEASE: true
-  FILE_NAME: imm_X86
+  FILE_NAME: ImmortalWrt_X86
   TZ: Asia/Shanghai
 
 jobs:
@@ -84,6 +84,6 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         body: |
           🔧 配置文件: ${{ env.CONFIG_FILE }}
-        artifacts: ${{ env.FIRMWARE }}/*.config
+        artifacts: ${{ env.FIRMWARE }}/${{ env.CONFIG_FILE_NAME }}
         artifactErrorsFailBuild: false
         replacesArtifacts: true
