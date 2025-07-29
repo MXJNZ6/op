@@ -4,7 +4,7 @@ on:
   repository_dispatch:
   workflow_dispatch:
   schedule:
-   - cron: 0 23 5 * ?
+    - cron: "0 23 5 * *"
 
 env:
   REPO_URL: https://github.com/immortalwrt/immortalwrt
@@ -13,62 +13,40 @@ env:
   DIY_SH: diy-imm.sh
   UPLOAD_FIRMWARE: true
   UPLOAD_RELEASE: true
-  FILE_NAME: X86
+  FILE_NAME: imm_X86
   TZ: Asia/Shanghai
 
 jobs:
   build:
     runs-on: ubuntu-22.04
     if: github.event.repository.owner.id == github.event.sender.id || ! github.event.sender.id
-    
+
     steps:
-    - name: Checkout OpenWrt
+    - name: Checkout Source Code
       uses: actions/checkout@v4
 
-    - name: Check server configuration
-      run: |
-        echo -e "-------------- ------------CPU信息------------------------------------------\n"
-        echo "CPU物理数量:$(cat /proc/cpuinfo| grep "physical id"| sort| uniq| wc -l)"
-        echo -e "CPU核心及版本信息：$(cat /proc/cpuinfo | grep name | cut -f2 -d: | uniq -c) \n"
-        echo "-------------------------------内存信息-------------------------------------------"
-        echo "已安装内存详细信息："
-        sudo lshw -short -C memory | grep GiB
-        echo -e "\n"
-        echo "-----------------------------硬盘信息---------------------------------------------"
-        echo -e  "硬盘数量：$(ls /dev/sd* | grep -v [1-9] | wc -l) \n"
-        echo "硬盘详情："
-        df -Th
-
-    - name: Initialization environment
+    - name: Setup Build Environment
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
-        sudo -E apt-mark hold grub-efi-amd64-signed
         sudo -E apt update
-        sudo -E apt -y purge azure-cli* docker* ghc* zulu* llvm* firefox google* dotnet* powershell* openjdk* mysql* php* mongodb* dotnet* snap*
-        sudo -E apt -y full-upgrade
         sudo -E apt -y install ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache clang cmake cpio curl device-tree-compiler flex gawk gcc-multilib g++-multilib gettext genisoimage git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev libssl-dev libtool llvm lrzsz msmtp ninja-build p7zip p7zip-full patch pkgconf python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
-        sudo -E systemctl daemon-reload
-        sudo -E apt -y autoremove --purge
-        sudo -E timedatectl set-timezone "Asia/Shanghai"
+        sudo timedatectl set-timezone "Asia/Shanghai"
         sudo mkdir -p /mnt/workdir
         sudo chown $USER:$GROUPS /mnt/workdir
-        echo "status=success" >> ${GITHUB_OUTPUT}
-        df -Th
 
-    - name: 下载固件源码
+    - name: Clone OpenWrt Source
       working-directory: /mnt/workdir
       run: |
         df -hT $PWD
         git clone $REPO_URL -b $REPO_BRANCH openwrt
-        ln -sf /mnt/workdir/openwrt $GITHUB_WORKSPACE/openwrt
         cd openwrt
         useVersionInfo=$(git show -s --date=short --format="%0AAuthor: %an%0Adate: %cd%0Acommit: %s%0Acommit hash: %H")
         echo "useVersionInfo=$useVersionInfo" >> $GITHUB_ENV
         echo "DATE=$(date "+%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
         echo "DATE1=$(date "+%Y-%m-%d")" >> $GITHUB_ENV
 
-    - name: 加载自定义设置和调整配置
+    - name: Apply Custom Configuration
       run: |
         chmod +x $DIY_SH
         cd openwrt
@@ -76,28 +54,23 @@ jobs:
         cd -
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
 
-    - name: 下载包
+    - name: Generate Config File
       id: package
       run: |
         cd openwrt
         make defconfig
 
-    - name: Organize files
+    - name: Prepare Config Artifact
       id: organize
       if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
         CONFIG_FILE_NAME="${FILE_NAME}_config_${DATE1}.config"
         cp "$GITHUB_WORKSPACE/openwrt/.config" "$CONFIG_FILE_NAME"
-        
-        # 设置环境变量
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "CONFIG_FILE=$CONFIG_FILE_NAME" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
-        
-        echo "当前目录文件列表："
-        ls -lh
 
-    - name: Create or Update release
+    - name: Publish Release
       id: release
       uses: ncipollo/release-action@v1
       if: env.UPLOAD_RELEASE == 'true' && steps.organize.outputs.status == 'success' && !cancelled()
