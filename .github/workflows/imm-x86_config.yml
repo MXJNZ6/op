@@ -84,6 +84,6 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         body: |
           🔧 配置文件: ${{ env.CONFIG_FILE }}
-        artifacts: ${{ env.FIRMWARE }}/${{ env.CONFIG_FILE_NAME }}
+        artifacts: ${{ env.CONFIG_FILE_NAME }}
         artifactErrorsFailBuild: false
         replacesArtifacts: true
