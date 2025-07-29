@@ -1,87 +1,114 @@
-name: ImmortalWRT Config Master
+name: OpenWrt_imm_X86 config
 
 on:
+  repository_dispatch:
   workflow_dispatch:
-  
+  schedule:
+   - cron: 0 23 5 * ?
+
 env:
-  BUILD_DIR: /mnt/immortal_build
   REPO_URL: https://github.com/immortalwrt/immortalwrt
   REPO_BRANCH: master
+  CONFIG_FILE: X86_imm.config
+  DIY_SH: diy-imm.sh
+  UPLOAD_FIRMWARE: true
+  UPLOAD_RELEASE: true
+  FILE_NAME: X86
+  TZ: Asia/Shanghai
 
 jobs:
-  config_production:
+  build:
     runs-on: ubuntu-22.04
-    timeout-minutes: 240
-
+    if: github.event.repository.owner.id == github.event.sender.id || ! github.event.sender.id
+    
     steps:
-    - name: 检出配置文件
+    - name: Checkout OpenWrt
       uses: actions/checkout@v4
 
-    - name: 设置构建环境
+    - name: Check server configuration
       run: |
-        # 安装必要的依赖
-        sudo apt-get update -y
-        sudo apt-get install -y \
-          build-essential \
-          git \
-          python3 \
-          python3-distutils \
-          python3-setuptools \
-          ncurses-dev \
-          gawk \
-          gettext \
-          libssl-dev \
-          xsltproc \
-          rsync \
-          unzip \
-          file \
-          wget
-        # 创建并设置构建目录权限
-        sudo mkdir -p ${{ env.BUILD_DIR }}
-        sudo chown -R $USER:$USER ${{ env.BUILD_DIR }}
-        df -h
+        echo -e "-------------- ------------CPU信息------------------------------------------\n"
+        echo "CPU物理数量:$(cat /proc/cpuinfo| grep "physical id"| sort| uniq| wc -l)"
+        echo -e "CPU核心及版本信息：$(cat /proc/cpuinfo | grep name | cut -f2 -d: | uniq -c) \n"
+        echo "-------------------------------内存信息-------------------------------------------"
+        echo "已安装内存详细信息："
+        sudo lshw -short -C memory | grep GiB
+        echo -e "\n"
+        echo "-----------------------------硬盘信息---------------------------------------------"
+        echo -e  "硬盘数量：$(ls /dev/sd* | grep -v [1-9] | wc -l) \n"
+        echo "硬盘详情："
+        df -Th
 
-    - name: 克隆源码
-      working-directory: ${{ env.BUILD_DIR }}
+    - name: Initialization environment
+      env:
+        DEBIAN_FRONTEND: noninteractive
       run: |
-        git clone --depth=1 --single-branch -b ${{ env.REPO_BRANCH }} \
-          ${{ env.REPO_URL }} openwrt
+        sudo -E apt-mark hold grub-efi-amd64-signed
+        sudo -E apt update
+        sudo -E apt -y purge azure-cli* docker* ghc* zulu* llvm* firefox google* dotnet* powershell* openjdk* mysql* php* mongodb* dotnet* snap*
+        sudo -E apt -y full-upgrade
+        sudo -E apt -y install ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache clang cmake cpio curl device-tree-compiler flex gawk gcc-multilib g++-multilib gettext genisoimage git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev libssl-dev libtool llvm lrzsz msmtp ninja-build p7zip p7zip-full patch pkgconf python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
+        sudo -E systemctl daemon-reload
+        sudo -E apt -y autoremove --purge
+        sudo -E timedatectl set-timezone "Asia/Shanghai"
+        sudo mkdir -p /mnt/workdir
+        sudo chown $USER:$GROUPS /mnt/workdir
+        echo "status=success" >> ${GITHUB_OUTPUT}
+        df -Th
+
+    - name: 下载固件源码
+      working-directory: /mnt/workdir
+      run: |
+        df -hT $PWD
+        git clone $REPO_URL -b $REPO_BRANCH openwrt
+        ln -sf /mnt/workdir/openwrt $GITHUB_WORKSPACE/openwrt
         cd openwrt
-        echo "COMMIT_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-        echo "BUILD_DATE=$(date '+%Y%m%d-%H%M%S')" >> $GITHUB_ENV
+        useVersionInfo=$(git show -s --date=short --format="%0AAuthor: %an%0Adate: %cd%0Acommit: %s%0Acommit hash: %H")
+        echo "useVersionInfo=$useVersionInfo" >> $GITHUB_ENV
+        echo "DATE=$(date "+%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
+        echo "DATE1=$(date "+%Y-%m-%d")" >> $GITHUB_ENV
 
-    - name: 应用配置
-      working-directory: ${{ env.BUILD_DIR }}/openwrt
+    - name: 加载自定义设置和调整配置
       run: |
-        chmod +x "$GITHUB_WORKSPACE/diy-imm.sh"
-        "$GITHUB_WORKSPACE/diy-imm.sh"
+        chmod +x $DIY_SH
+        cd openwrt
+        $GITHUB_WORKSPACE/$DIY_SH
+        cd -
+        [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
 
-    - name: 生成配置文件
-      if: success() || failure()
-      working-directory: ${{ env.BUILD_DIR }}/openwrt
+    - name: 下载包
+      id: package
       run: |
+        cd openwrt
         make defconfig
-        FINAL_CONFIG="immortalwrt_${{ github.sha }}_${{ env.BUILD_DATE }}.config"
-        cp .config "$GITHUB_WORKSPACE/$FINAL_CONFIG"
-        echo "CONFIG_PATH=$GITHUB_WORKSPACE/$FINAL_CONFIG" >> $GITHUB_ENV
 
-    - name: 上传配置文件
-      uses: actions/upload-artifact@v4
-      with:
-        name: immortal-config
-        path: ${{ env.CONFIG_PATH }}
+    - name: Organize files
+      id: organize
+      if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
+      run: |
+        CONFIG_FILE_NAME="${FILE_NAME}_config_${DATE1}.config"
+        cp "$GITHUB_WORKSPACE/openwrt/.config" "$CONFIG_FILE_NAME"
+        
+        # 设置环境变量
+        echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+        echo "CONFIG_FILE=$CONFIG_FILE_NAME" >> $GITHUB_ENV
+        echo "status=success" >> $GITHUB_OUTPUT
+        
+        echo "当前目录文件列表："
+        ls -lh
 
-    - name: 创建 GitHub Release
-      uses: softprops/action-gh-release@v1
+    - name: Create or Update release
+      id: release
+      uses: ncipollo/release-action@v1
+      if: env.UPLOAD_RELEASE == 'true' && steps.organize.outputs.status == 'success' && !cancelled()
       with:
-        name: "ImmortalWRT_config"
-        tag_name: "config-imm"
-        body: |
-          ### 配置文件说明
-          - 文件命名包含config文件生成时间，可按需下载
-          ⚙️ 使用方式：
-          1. 下载后重命名为`.config`
-          2. 放置到OpenWrt编译目录
-          3. 运行`make defconfig`
-        files: ${{ env.CONFIG_PATH }}
+        name: "immortalwrt X86 Config"
+        tag: "immortalwrt-config"
+        allowUpdates: true
+        commit: master
         token: ${{ secrets.GITHUB_TOKEN }}
+        body: |
+          🔧 配置文件: ${{ env.CONFIG_FILE }}
+        artifacts: ${{ env.FIRMWARE }}/*.config
+        artifactErrorsFailBuild: false
+        replacesArtifacts: true
