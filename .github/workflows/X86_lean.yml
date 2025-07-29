@@ -113,7 +113,7 @@ jobs:
       id: organize
       if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
-        # 安全查找固件目录
+        # 查找固件目录
         TARGET_DIR=$(find "$GITHUB_WORKSPACE/openwrt/bin/targets" -type d -path "*/targets/*/*" | head -1)
         [ -z "$TARGET_DIR" ] && { echo "错误：找不到固件目录"; exit 1; }
         cd "$TARGET_DIR" || exit 1
@@ -130,13 +130,12 @@ jobs:
         echo "当前目录文件列表："
         ls -lh
 
-    - name: Upload all artifacts
-      uses: actions/upload-artifact@v4
+    - name: Prepare release files
       if: steps.organize.outputs.status == 'success' && !cancelled()
-      with:
-        name: OpenWrt_${{ env.FILE_NAME }}_full_${{ env.FILE_DATE }}
-        path: ${{ env.FIRMWARE }}
-        retention-days: 7
+      run: |
+        mkdir -p release_files
+        find "${{ env.FIRMWARE }}" -maxdepth 1 -type f -exec cp {} release_files/ \;
+        echo "RELEASE_FILES=$PWD/release_files" >> $GITHUB_ENV
 
     - name: Create or Update release
       id: release
@@ -155,7 +154,8 @@ jobs:
           📦 文件信息:
           - 固件镜像 (*.img.gz)
           - 配置文件 (.config)
-        artifacts: ${{ env.FIRMWARE }}/*
+          - 其它相关文件
+        artifacts: ${{ env.RELEASE_FILES }}/*
         artifactErrorsFailBuild: false
         replacesArtifacts: true
 
