@@ -68,7 +68,8 @@ jobs:
         echo "CONFIG_FILENAME=${FILE_NAME}_${COMMIT_HASH}_${BUILD_DATE}.config" >> $GITHUB_ENV
         cp ".config" "$GITHUB_WORKSPACE/${FILE_NAME}_${COMMIT_HASH}_${BUILD_DATE}.config"
         echo "CONFIG_PATH=$GITHUB_WORKSPACE/${FILE_NAME}_${COMMIT_HASH}_${BUILD_DATE}.config" >> $GITHUB_ENV
-
+        ls -l $GITHUB_WORKSPACE
+        
     - name: Create release
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       uses: softprops/action-gh-release@v1
