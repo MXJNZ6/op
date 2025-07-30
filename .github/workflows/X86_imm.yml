@@ -112,12 +112,9 @@ jobs:
       id: organize
       if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
-        # 安全查找固件目录
         TARGET_DIR=$(find "$GITHUB_WORKSPACE/openwrt/bin/targets" -type d -path "*/targets/*/*" | head -1)
         [ -z "$TARGET_DIR" ] && { echo "错误：找不到固件目录"; exit 1; }
         cd "$TARGET_DIR" || exit 1
-        
-        # 复制配置文件（带日期标记）
         CONFIG_FILE_NAME="${FILE_NAME}_config_${DATE1}.config"
         cp "$GITHUB_WORKSPACE/openwrt/.config" "$CONFIG_FILE_NAME"
         
@@ -125,10 +122,15 @@ jobs:
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "CONFIG_FILE=$CONFIG_FILE_NAME" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
-        
         echo "当前目录文件列表："
         ls -lh
 
+    - name: Collect release files
+      if: steps.organize.outputs.status == 'success' && !cancelled()
+      run: |
+        RELEASE_FILES=$(find "${FIRMWARE}" -type f | tr '\n' ' ')
+        echo "RELEASE_FILES=${RELEASE_FILES}" >> $GITHUB_ENV
+        
     - name: Upload all artifacts
       uses: actions/upload-artifact@v4
       if: steps.organize.outputs.status == 'success' && !cancelled()
@@ -154,10 +156,10 @@ jobs:
           📦 文件信息:
           - 固件镜像 (*.img.gz)
           - 配置文件 (.config)
-        artifacts: ${{ env.FIRMWARE }}/*
+        artifacts: ${{ env.RELEASE_FILES }}
         artifactErrorsFailBuild: false
         replacesArtifacts: true
-
+        
     - name: TG notification
       if: success()
       run: |
