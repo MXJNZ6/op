@@ -20,5 +20,44 @@ echo "src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git;main" >>
 ./scripts/feeds update -a
 ./scripts/feeds install -a
 ﻿#
+# 添加 gettext 补丁修复
+echo "更新 gettext 补丁..."
+mkdir -p package/libs/gettext-full/patches
+cat > package/libs/gettext-full/patches/200-libunistring-missing-link.patch <<'EOF'
+--- a/autogen.sh
++++ b/autogen.sh
+@@ -104,6 +104,7 @@ if ! $skip_gnulib; then
+     getopt-gnu
+     gettext-h
+     havelib
++    libunistring-optional
+     memmove
+     noreturn
+     progname
+
+--- a/gettext-runtime/src/Makefile.am  
++++ b/gettext-runtime/src/Makefile.am
+@@ -43,7 +43,7 @@ envsubst_SOURCES = envsubst.c
+
+ # Link dependencies.
+ # Need @LTLIBICONV@ because striconv.c uses iconv().
+-LDADD = ../gnulib-lib/libgrt.a @LTLIBINTL@ @LTLIBICONV@ $(WOE32_LDADD)
++LDADD = ../gnulib-lib/libgrt.a $(LTLIBUNISTRING) @LTLIBINTL@ @LTLIBICONV@ $(WOE32_LDADD)
+
+ # Specify installation directory, for --enable-relocatable.
+ gettext_CFLAGS = -DINSTALLDIR=$(bindir_c_make)
+
+--- a/gettext-tools/src/msgcmp.c
++++ b/gettext-tools/src/msgcmp.c
+@@ -107,7 +107,7 @@ main (int argc, char *argv[])
+   /* Set program name for messages.  */
+   set_program_name (argv[0]);
+   error_print_progname = maybe_print_progname;
+-  bindtextdomain ("bison-runtime", relocate (BISON_LOCALEDIR));
++  bindtextdomain ("bison-runtime", relocate (LOCALEDIR));
+   bindtextdomain (PACKAGE, relocate (LOCALEDIR));
+   textdomain (PACKAGE);
+EOF
+
 echo "========================="
 echo " DIY 配置完成……"
