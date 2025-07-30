@@ -57,33 +57,46 @@ jobs:
 
     - name: Generate Config File
       working-directory: /mnt/workdir/openwrt
-      id: package
       run: |
         make defconfig
 
-    - name: Prepare Config Artifact
+    - name: Set commit hash and build date
       working-directory: /mnt/workdir/openwrt
-      id: organize
-      if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
-        CONFIG_FILE_NAME="${FILE_NAME}_config_${DATE1}.config"
-        cp ".config" "$GITHUB_WORKSPACE/$CONFIG_FILE_NAME"
-        echo "FIRMWARE=$GITHUB_WORKSPACE" >> $GITHUB_ENV
-        echo "CONFIG_FILE=$CONFIG_FILE_NAME" >> $GITHUB_ENV
-        echo "status=success" >> $GITHUB_OUTPUT
+        echo "COMMIT_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+        echo "BUILD_DATE=$(date '+%Y%m%d')" >> $GITHUB_ENV
+        echo "CONFIG_FILENAME=${FILE_NAME}_${COMMIT_HASH}_${BUILD_DATE}.config" >> $GITHUB_ENV
+        cp ".config" "$GITHUB_WORKSPACE/${FILE_NAME}_${COMMIT_HASH}_${BUILD_DATE}.config"
+        echo "CONFIG_PATH=$GITHUB_WORKSPACE/${FILE_NAME}_${COMMIT_HASH}_${BUILD_DATE}.config" >> $GITHUB_ENV
 
-    - name: Publish Release
-      id: release
-      uses: ncipollo/release-action@v1
-      if: env.UPLOAD_RELEASE == 'true' && steps.organize.outputs.status == 'success' && !cancelled()
+    - name: Create release
+      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
+      uses: softprops/action-gh-release@v1
+      env:
+        CONFIG_FILENAME: ${{ env.CONFIG_FILENAME }}
+        CONFIG_PATH: ${{ env.CONFIG_PATH }}
+        COMMIT_HASH: ${{ env.COMMIT_HASH }}
+        BUILD_DATE: ${{ env.BUILD_DATE }}
+        FILE_NAME: ${{ env.FILE_NAME }}
       with:
-        name: "immortalwrt X86 Config"
-        tag: "immortalwrt-config"
-        allowUpdates: true
-        commit: master
-        token: ${{ secrets.GITHUB_TOKEN }}
+        name: ImmortalWRT X86 Config
+        tag_name: "imm-config"
         body: |
-          🔧 配置文件: ${{ env.CONFIG_FILE }}
-        artifacts: ${{ env.CONFIG_FILE_NAME }}
-        artifactErrorsFailBuild: false
-        replacesArtifacts: true
+          ### 配置文件说明
+          📁 文件名：`源码_架构_时间.config`
+          📁 最新版文件名：`${{ env.FILE_NAME }}_${{ env.COMMIT_HASH }}_${{ env.BUILD_DATE }}.config`
+
+          🔍 版本信息：
+          - 提交哈希：`${{ env.COMMIT_HASH }}`
+          - 最新版提交哈希：`${{ env.COMMIT_HASH }}`
+          - 最新版生成时间：`${{ env.BUILD_DATE }}`（北京时间）
+          - 文件命名包含config文件生成时间，可按需下载
+
+          ⚙️ 使用方式：
+          1. 下载后重命名为`.config`
+          2. 放置到OpenWrt编译目录
+          3. 运行`make defconfig`
+        files: ${{ env.CONFIG_PATH }}
+        draft: false
+        prerelease: false
+        token: ${{ secrets.GITHUB_TOKEN }}
