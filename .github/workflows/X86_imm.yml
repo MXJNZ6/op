@@ -117,8 +117,6 @@ jobs:
         cd "$TARGET_DIR" || exit 1
         CONFIG_FILE_NAME="${FILE_NAME}_config_${DATE1}.config"
         cp "$GITHUB_WORKSPACE/openwrt/.config" "$CONFIG_FILE_NAME"
-        
-        # 设置环境变量
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "CONFIG_FILE=$CONFIG_FILE_NAME" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
@@ -128,7 +126,7 @@ jobs:
     - name: Collect release files
       if: steps.organize.outputs.status == 'success' && !cancelled()
       run: |
-        RELEASE_FILES=$(find "${FIRMWARE}" -type f | tr '\n' ' ')
+        RELEASE_FILES=$(find "${FIRMWARE}" -maxdepth 1 -type f | tr '\n' ' ')
         echo "RELEASE_FILES=${RELEASE_FILES}" >> $GITHUB_ENV
         
     - name: Upload all artifacts
@@ -136,7 +134,9 @@ jobs:
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
         name: OpenWrt_${{ env.FILE_NAME }}_full_${{ env.FILE_DATE }}
-        path: ${{ env.FIRMWARE }}
+        path: |
+          ${{ env.FIRMWARE }}/*
+          !${{ env.FIRMWARE }}/*/
         retention-days: 7
 
     - name: Create or Update release
