@@ -8,7 +8,7 @@ on:
 
 env:
   REPO_URL: https://github.com/immortalwrt/immortalwrt
-  REPO_BRANCH: master
+  REPO_BRANCH: v23.05.4
   CONFIG_FILE: X86_imm.config
   DIY_SH: diy-imm.sh
   UPLOAD_FIRMWARE: true
