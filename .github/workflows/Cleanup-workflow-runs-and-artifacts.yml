@@ -3,8 +3,6 @@ name: Cleanup workflow runs and artifacts
 on:
   repository_dispatch:
   workflow_dispatch:
-  schedule:
-    - cron: '0 8/12 * * *'  # 每12小时在整点运行一次（UTC时间）
 
 env:
   KEEP_SUCCESSFUL_RUNS: 2    # 保留最近2次成功运行
