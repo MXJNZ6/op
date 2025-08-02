@@ -43,8 +43,6 @@ jobs:
         cd openwrt
         useVersionInfo=$(git show -s --date=short --format="%0AAuthor: %an%0Adate: %cd%0Acommit: %s%0Acommit hash: %H")
         echo "useVersionInfo=$useVersionInfo" >> $GITHUB_ENV
-        echo "DATE=$(date "+%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
-        echo "DATE1=$(date "+%Y-%m-%d")" >> $GITHUB_ENV
 
     - name: Apply Custom Configuration
       working-directory: /mnt/workdir
@@ -60,44 +58,41 @@ jobs:
       run: |
         make defconfig
 
-    - name: Set commit hash and build date
+    - name: Set build metadata and generate filename
       working-directory: /mnt/workdir/openwrt
       run: |
         echo "COMMIT_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
         echo "BUILD_DATE=$(date '+%Y%m%d')" >> $GITHUB_ENV
-        echo "CONFIG_FILENAME=${FILE_NAME}_${COMMIT_HASH}_${BUILD_DATE}.config" >> $GITHUB_ENV
-        cp ".config" "$GITHUB_WORKSPACE/${FILE_NAME}_${COMMIT_HASH}_${BUILD_DATE}.config"
-        echo "CONFIG_PATH=$GITHUB_WORKSPACE/${FILE_NAME}_${COMMIT_HASH}_${BUILD_DATE}.config" >> $GITHUB_ENV
-        ls -l $GITHUB_WORKSPACE
-        
+        # 直接生成最终文件名变量
+        echo "RELEASE_FILE=${FILE_NAME}_$(git rev-parse --short HEAD)_$(date '+%Y%m%d').config" >> $GITHUB_ENV
+        # 复制配置文件到工作目录
+        cp ".config" "$GITHUB_WORKSPACE/$RELEASE_FILE"
+        echo "配置文件已生成: $RELEASE_FILE"
+
+    - name: Verify file existence
+      run: |
+        ls -lh "$GITHUB_WORKSPACE/${{ env.RELEASE_FILE }}"
+        echo "文件路径: $GITHUB_WORKSPACE/${{ env.RELEASE_FILE }}"
+
     - name: Create release
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       uses: softprops/action-gh-release@v1
       env:
-        CONFIG_FILENAME: ${{ env.CONFIG_FILENAME }}
-        CONFIG_PATH: ${{ env.CONFIG_PATH }}
-        COMMIT_HASH: ${{ env.COMMIT_HASH }}
-        BUILD_DATE: ${{ env.BUILD_DATE }}
-        FILE_NAME: ${{ env.FILE_NAME }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         name: ImmortalWRT X86 Config
         tag_name: "imm-config"
         body: |
-          ### 配置文件说明
-          📁 文件名：`源码_架构_时间.config`
-          📁 最新版文件名：`${{ env.FILE_NAME }}_${{ env.COMMIT_HASH }}_${{ env.BUILD_DATE }}.config`
+          ### 自动生成的 ImmortalWRT 配置文件
+          ⚙️ **文件信息**  
+          - 文件名: `${{ env.RELEASE_FILE }}`  
+          - 提交哈希: `${{ env.COMMIT_HASH }}`  
+          - 生成时间: `${{ env.BUILD_DATE }}` (UTC+8)
 
-          🔍 版本信息：
-          - 提交哈希：`${{ env.COMMIT_HASH }}`
-          - 最新版提交哈希：`${{ env.COMMIT_HASH }}`
-          - 最新版生成时间：`${{ env.BUILD_DATE }}`（北京时间）
-          - 文件命名包含config文件生成时间，可按需下载
-
-          ⚙️ 使用方式：
-          1. 下载后重命名为`.config`
-          2. 放置到OpenWrt编译目录
-          3. 运行`make defconfig`
-        files: ${{ env.CONFIG_PATH }}
+          📥 **使用说明**  
+          1. 下载后重命名为 `.config`  
+          2. 放置到 OpenWrt 编译根目录  
+          3. 运行 `make defconfig` 校验配置
+        files: ${{ env.RELEASE_FILE }}
         draft: false
         prerelease: false
-        token: ${{ secrets.GITHUB_TOKEN }}
