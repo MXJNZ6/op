@@ -92,13 +92,34 @@ jobs:
       id: compile
       run: |
         cd openwrt
-        echo -e "$(nproc) thread compile"
-        make -j$(nproc) || make -j1 || make -j1 V=s
-        echo "status=success" >> $GITHUB_OUTPUT
+        echo "::group::编译日志（线程数: $(nproc）"
+        {
+          echo "▌第一阶段编译：多线程模式（make -j$(nproc)）"
+          make -j$(nproc) 2>&1 || {
+            echo "::warning::多线程编译失败，尝试单线程重试"
+        
+            echo "▌第二阶段编译：单线程模式（make -j1）"
+            make -j1 2>&1 || {
+              echo "::error::单线程编译失败，进入详细日志模式"
+          
+              echo "▌第三阶段编译：详细日志模式（make -j1 V=s）"
+              make -j1 V=s 2>&1 || {
+                echo "::error::编译彻底失败，请检查错误日志"
+                exit 1
+              }
+            }
+          }
+        } | tee compile.log
+        echo "::endgroup::"
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
         [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+        echo "::notice::编译完成！设备标识: ${DEVICE_NAME:-未检测到设备}"
         df -Th
+        echo "::group::完整编译日志"
+        cat compile.log
+        echo "::endgroup::"
+        echo "status=success" >> $GITHUB_OUTPUT
 
     - name: Clean up server space
       if: steps.compile.outputs.status == 'success' && !cancelled()
@@ -111,31 +132,33 @@ jobs:
       id: organize
       if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
-        TARGET_DIR=$(find "$GITHUB_WORKSPACE/openwrt/bin/targets" -type d -path "*/targets/*/*" | head -1)
-        [ -z "$TARGET_DIR" ] && { echo "错误：找不到固件目录"; exit 1; }
-        cd "$TARGET_DIR" || exit 1
-        CONFIG_FILE_NAME="${FILE_NAME}_config_${DATE1}.config"
-        cp "$GITHUB_WORKSPACE/openwrt/.config" "$CONFIG_FILE_NAME"
-        echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+        TARGET_DIR=$(find "$GITHUB_WORKSPACE/openwrt/bin/targets" -type d -name "*x86*" -exec test -d {}/packages \; -print -quit)
+        [ -z "$TARGET_DIR" ] && { echo "::error::错误：找不到有效的固件目录"; exit 1; }
+        cd "$TARGET_DIR" || { echo "::error::无法进入目录: $TARGET_DIR"; exit 1; }
+        CONFIG_FILE_NAME="${FILE_NAME}_config_$(date +"%Y%m%d").config"
+        cp "$GITHUB_WORKSPACE/openwrt/.config" "$CONFIG_FILE_NAME" || echo "::warning::配置文件复制失败，继续其他操作"
+        echo "FIRMWARE_DIR=$TARGET_DIR" >> $GITHUB_ENV
         echo "CONFIG_FILE=$CONFIG_FILE_NAME" >> $GITHUB_ENV
-        echo "status=success" >> $GITHUB_OUTPUT
-        echo "当前目录文件列表："
+        echo "::group::当前目录内容"
         ls -lh
+        echo "::endgroup::"
+        echo "status=success" >> $GITHUB_OUTPUT
 
     - name: Collect release files
       if: steps.organize.outputs.status == 'success' && !cancelled()
       run: |
-        RELEASE_FILES=$(find "${FIRMWARE}" -maxdepth 1 -type f | tr '\n' ' ')
+        RELEASE_FILES=$(find "${FIRMWARE_DIR}" -maxdepth 1 -type f -not -name ".*" -print0 | xargs -0 realpath --relative-to="$GITHUB_WORKSPACE" | tr '\n' ' ')
+        [ -z "$RELEASE_FILES" ] && { echo "::error::未找到任何发布文件"; exit 1; }
         echo "RELEASE_FILES=${RELEASE_FILES}" >> $GITHUB_ENV
-        
+        echo "::notice::找到发布文件: ${RELEASE_FILES}"
+
     - name: Upload all artifacts
       uses: actions/upload-artifact@v4
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
-        name: OpenWrt_${{ env.FILE_NAME }}_full_${{ env.FILE_DATE }}
+        name: OpenWrt_${{ env.FILE_NAME }}_full_${{ env.DATE1 }}
         path: |
-          ${{ env.FIRMWARE }}/*
-          !${{ env.FIRMWARE }}/*/
+          ${{ env.RELEASE_FILES }}
         retention-days: 7
 
     - name: Create or Update release
