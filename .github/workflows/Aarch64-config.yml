@@ -28,17 +28,22 @@ jobs:
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
-        sudo -E rm -rf /usr/share/dotnet /etc/mysql /etc/php /etc/apt/sources.list.d /usr/local/lib/android
-        sudo -E apt -y purge azure-cli* docker* ghc* zulu* llvm* firefox google* dotnet* powershell* openjdk* mysql* php* mongodb* dotnet* snap* aspnetcore*
+        docker rmi $(docker images -q) || true
+        sudo rm -rf /usr/share/dotnet /etc/mysql /etc/php /etc/apt/sources.list.d /usr/local/lib/android
+        sudo apt-get purge -y azure-cli* docker* ghc* zulu* llvm* firefox google* dotnet* powershell* openjdk* mysql* php* mongodb* snap* aspnetcore*
         [ -n "$AGENT_TOOLSDIRECTORY" ] && sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-        sudo -E apt update
-        sudo -E apt -y install $(curl -fsSL https://is.gd/depends_ubuntu_2204)
-        sudo -E apt -y install clang llvm lld
-        sudo -E apt -y autoremove --purge
-        sudo -E systemctl daemon-reload
-        sudo timedatectl set-timezone "$TZ"
-        sudo mkdir -p /workdir
-        sudo chown $USER:$GROUPS /workdir
+        sudo apt-get update && \
+        sudo apt-get install -y \
+          $(curl -fsSL https://is.gd/depends_ubuntu_2204) \
+          clang llvm lld \
+          csstidy luarocks && \
+        sudo luarocks install luasrcdiet
+        sudo apt-get autoremove --purge -y && \
+        sudo apt-get clean && \
+        sudo timedatectl set-timezone "$TZ" && \
+        sudo mkdir -p /mnt/workdir && \
+        sudo chown $USER:$GROUPS /mnt/workdir
+        
         echo "status=success" >> ${GITHUB_OUTPUT}
         df -Th
         
