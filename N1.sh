@@ -54,6 +54,7 @@ sed -i 's/services/network/g' feeds/luci/applications/luci-app-upnp/luasrc/contr
 sed -i 's/services/network/g' feeds/luci/applications/luci-app-upnp/luasrc/model/cbi/upnp/*.lua
 sed -i 's/services/network/g' feeds/luci/applications/luci-app-upnp/luasrc/view/*.htm
 
+./scripts/feeds update -a
 ./scripts/feeds install -a
 
 echo "========================="
