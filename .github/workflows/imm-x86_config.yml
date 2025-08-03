@@ -58,21 +58,28 @@ jobs:
       run: |
         make defconfig
 
-    - name: Set build metadata and generate filename
+    - name: Set build metadata and copy config
       working-directory: /mnt/workdir/openwrt
       run: |
-        echo "COMMIT_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-        echo "BUILD_DATE=$(date '+%Y%m%d')" >> $GITHUB_ENV
-        # 直接生成最终文件名变量
-        echo "RELEASE_FILE=${FILE_NAME}_$(git rev-parse --short HEAD)_$(date '+%Y%m%d').config" >> $GITHUB_ENV
-        # 复制配置文件到工作目录
-        cp ".config" "$GITHUB_WORKSPACE/$RELEASE_FILE"
-        echo "配置文件已生成: $RELEASE_FILE"
+        COMMIT_SHORT=$(git rev-parse --short HEAD)
+        BUILD_DATE=$(date '+%Y%m%d')
+        
+        RELEASE_FILE="${FILE_NAME}_${COMMIT_SHORT}_${BUILD_DATE}.config"
+        echo "COMMIT_HASH=${COMMIT_SHORT}" >> $GITHUB_ENV
+        echo "BUILD_DATE=${BUILD_DATE}" >> $GITHUB_ENV
+        echo "RELEASE_FILE=${RELEASE_FILE}" >> $GITHUB_ENV
+        
+        mkdir -p $GITHUB_WORKSPACE
+        cp -v ".config" "$GITHUB_WORKSPACE/${RELEASE_FILE}"
+        echo "配置文件已复制到: $GITHUB_WORKSPACE/${RELEASE_FILE}"
 
     - name: Verify file existence
       run: |
-        ls -lh "$GITHUB_WORKSPACE/${{ env.RELEASE_FILE }}"
-        echo "文件路径: $GITHUB_WORKSPACE/${{ env.RELEASE_FILE }}"
+        echo "当前工作目录: $PWD"
+        echo "查找文件: $GITHUB_WORKSPACE/${{ env.RELEASE_FILE }}"
+        ls -lh "$GITHUB_WORKSPACE/${{ env.RELEASE_FILE }}" || echo "::warning::文件未找到，请检查路径"
+        echo "工作目录内容:"
+        ls -lh $GITHUB_WORKSPACE
 
     - name: Create release
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
