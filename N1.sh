@@ -34,13 +34,6 @@ rm -rf package/custom; mkdir package/custom
 # sed -i '$a src-git nas https://github.com/linkease/nas-packages.git;master' feeds.conf.default
 # sed -i '$a src-git nas_luci https://github.com/linkease/nas-packages-luci.git;main' feeds.conf.default
 
-git clone https://github.com/fw876/helloworld.git package/ssr
-git clone https://github.com/xiaorouji/openwrt-passwall-packages.git package/openwrt-passwall
-git clone https://github.com/xiaorouji/openwrt-passwall.git package/passwall
-
-# 切换内核版本
-# sed -i 's/KERNEL_PATCHVER:=5.15/KERNEL_PATCHVER:=5.4/g' ./target/linux/x86/Makefile
-
 # 修改openwrt登陆地址,把下面的10.10.10.254修改成你需要的
 sed -i 's/192.168.1.1/10.10.10.254/g' package/base-files/files/bin/config_generate
 
@@ -49,7 +42,6 @@ sed -i "/uci commit system/i\uci set system.@system[0].hostname='Unicorn'" packa
 sed -i "s/hostname='OpenWrt'/hostname='Unicorn'/g" ./package/base-files/files/bin/config_generate
 
 merge_package https://github.com/vernesong/OpenClash OpenClash/luci-app-openclash
-merge_package https://github.com/Lienol/openwrt-package openwrt-package/luci-app-filebrowser
 
 #mosdns
 rm -rf feeds/packages/net/mosdns
