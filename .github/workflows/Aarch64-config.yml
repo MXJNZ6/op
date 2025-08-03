@@ -41,7 +41,7 @@ jobs:
         sudo apt-get autoremove --purge -y && \
         sudo apt-get clean && \
         sudo timedatectl set-timezone "$TZ" && \
-        sudo mkdir -p /mnt/workdir && \
+        sudo mkdir -p /workdir && \
         sudo chown $USER:$GROUPS /mnt/workdir
         
         echo "status=success" >> ${GITHUB_OUTPUT}
