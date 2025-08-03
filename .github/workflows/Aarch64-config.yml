@@ -43,8 +43,8 @@ jobs:
           sudo sed -i '/NVM_DIR/d;/skel/d' /root/{.bashrc,.profile}
           sudo rm -rf ~/{.cargo,.dotnet,.rustup}
           sudo timedatectl set-timezone "${TZ}"
-          echo "status=success" >> ${GITHUB_OUTPUT}
           sudo mkdir -p /workdir
+          sudo chown $USER:$GROUPS /workdir
           echo "status=success" >> ${GITHUB_OUTPUT}
           df -Th
         
