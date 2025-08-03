@@ -36,6 +36,7 @@ sed -i "s/hostname='OpenWrt'/hostname='Unicorn'/g" ./package/base-files/files/bi
 
 merge_package https://github.com/vernesong/OpenClash OpenClash/luci-app-openclash
 git clone https://github.com/UnblockNeteaseMusic/luci-app-unblockneteasemusic.git package/luci-app-unblockneteasemusic
+rm -rf package/luci-app-amlogic
 git clone https://github.com/ophub/luci-app-amlogic.git package/luci-app-amlogic
 git clone -b js https://github.com/sirpdboy/luci-theme-kucat.git  package/luci-theme-kucat
 git clone https://github.com/sirpdboy/luci-app-advancedplus.git  package/luci-app-advancedplus
