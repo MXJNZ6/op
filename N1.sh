@@ -46,6 +46,7 @@ git clone https://github.com/sirpdboy/luci-app-advancedplus.git  package/luci-ap
 # 删除包
 rm -rf feeds/packages/multimedia/UnblockNeteaseMusic
 rm -rf feeds/luci/applications/luci-app-unblockmusic
+rm -rf feeds/luci/applications/luci-app-openclash
 rm -rf feeds/packages/multimedia/UnblockNeteaseMusic-Go
 
 # 调整upnp到网络菜单
