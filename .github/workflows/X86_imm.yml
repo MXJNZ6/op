@@ -99,25 +99,37 @@ jobs:
       id: organize
       if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
-        TARGET_DIR=$(find "$GITHUB_WORKSPACE/openwrt/bin/targets" -type d -name "*x86*" -exec test -d {}/packages \; -print -quit)
-        [ -z "$TARGET_DIR" ] && { echo "::error::错误：找不到有效的固件目录"; exit 1; }
-        cd "$TARGET_DIR" || { echo "::error::无法进入目录: $TARGET_DIR"; exit 1; }
-        CONFIG_FILE_NAME="${FILE_NAME}_config_$(date +"%Y%m%d").config"
-        cp "$GITHUB_WORKSPACE/openwrt/.config" "$CONFIG_FILE_NAME" || echo "::warning::配置文件复制失败，继续其他操作"
-        echo "FIRMWARE_DIR=$TARGET_DIR" >> $GITHUB_ENV
+        TARGET_DIR=$(find "$GITHUB_WORKSPACE/openwrt/bin/targets" -type f -name "*.img.gz" -exec dirname {} \; | uniq)
+        [ -z "$TARGET_DIR" ] && { 
+          echo "::error::错误：找不到固件文件(*.img.gz)";
+          echo "调试信息：";
+          ls -R "$GITHUB_WORKSPACE/openwrt/bin";
+          exit 1;
+        }
+        
+        cd "$TARGET_DIR" || exit 1
+        echo "固件目录路径：$PWD"
+        CONFIG_FILE_NAME="${FILE_NAME}_config_${DATE1}.config"
+        [ -f "$GITHUB_WORKSPACE/openwrt/.config" ] && cp "$GITHUB_WORKSPACE/openwrt/.config" "$CONFIG_FILE_NAME"
+        
+        echo "FIRMWARE_DIR=$PWD" >> $GITHUB_ENV
         echo "CONFIG_FILE=$CONFIG_FILE_NAME" >> $GITHUB_ENV
-        echo "::group::当前目录内容"
-        ls -lh
-        echo "::endgroup::"
         echo "status=success" >> $GITHUB_OUTPUT
+        
+        echo "::group::固件目录内容（仅文件）"
+        find . -maxdepth 1 -type f -ls
+        echo "::endgroup::"
 
     - name: Collect release files
       if: steps.organize.outputs.status == 'success' && !cancelled()
       run: |
-        RELEASE_FILES=$(find "${FIRMWARE_DIR}" -maxdepth 1 -type f -not -name ".*" -print0 | xargs -0 realpath --relative-to="$GITHUB_WORKSPACE" | tr '\n' ' ')
-        [ -z "$RELEASE_FILES" ] && { echo "::error::未找到任何发布文件"; exit 1; }
-        echo "RELEASE_FILES=${RELEASE_FILES}" >> $GITHUB_ENV
-        echo "::notice::找到发布文件: ${RELEASE_FILES}"
+        RELEASE_DIR="$GITHUB_WORKSPACE/release_files"
+        mkdir -p "$RELEASE_DIR"
+        find "${{ env.FIRMWARE_DIR }}" -maxdepth 1 -type f -exec cp -v {} "$RELEASE_DIR/" \;
+        echo "RELEASE_FILES=$RELEASE_DIR/*" >> $GITHUB_ENV
+        echo "::group::最终发布文件"
+        ls -lh "$RELEASE_DIR"
+        echo "::endgroup::"
 
     - name: Upload all artifacts
       uses: actions/upload-artifact@v4
