@@ -27,6 +27,15 @@ function drop_package(){
 
 rm -rf package/custom; mkdir package/custom
 
+
+# Update feeds
+./scripts/feeds update -a
+# 删除包
+rm -rf feeds/packages/multimedia/UnblockNeteaseMusic
+rm -rf feeds/luci/applications/luci-app-unblockmusic
+rm -rf feeds/luci/applications/luci-app-openclash
+rm -rf feeds/packages/multimedia/UnblockNeteaseMusic-Go
+
 # 修改openwrt登陆地址,把下面的10.10.10.254修改成你需要的
 sed -i 's/192.168.1.1/10.10.10.254/g' package/base-files/files/bin/config_generate
 
@@ -40,19 +49,6 @@ rm -rf package/luci-app-amlogic
 git clone https://github.com/ophub/luci-app-amlogic.git package/luci-app-amlogic
 git clone -b js https://github.com/sirpdboy/luci-theme-kucat.git  package/luci-theme-kucat
 git clone https://github.com/sirpdboy/luci-app-advancedplus.git  package/luci-app-advancedplus
-# Update feeds
-./scripts/feeds update -a
-
-# 删除包
-rm -rf feeds/packages/multimedia/UnblockNeteaseMusic
-rm -rf feeds/luci/applications/luci-app-unblockmusic
-rm -rf feeds/luci/applications/luci-app-openclash
-rm -rf feeds/packages/multimedia/UnblockNeteaseMusic-Go
-
-# 调整upnp到网络菜单
-sed -i 's/services/network/g' feeds/luci/applications/luci-app-upnp/luasrc/controller/*.lua
-sed -i 's/services/network/g' feeds/luci/applications/luci-app-upnp/luasrc/model/cbi/upnp/*.lua
-sed -i 's/services/network/g' feeds/luci/applications/luci-app-upnp/luasrc/view/*.htm
 
 ./scripts/feeds install -a
 ./scripts/feeds install -f luci-app-amlogic
