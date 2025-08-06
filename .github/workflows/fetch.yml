@@ -19,21 +19,6 @@ jobs:
           git fetch upstream
           git merge upstream/master
           git push origin master
-
-  freenom:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Merge upstream
-        run: |
-          git config --global user.name 'MXJNZ6'
-          git config --global user.email 'MXJNZ6'
-          git config --global credential.helper store
-          git clone https://${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}@github.com/MXJNZ6/freenom.git tmp
-          cd tmp
-          git remote add upstream https://${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}@github.com/luolongfei/freenom.git
-          git fetch upstream
-          git merge upstream/main
-          git push origin main
           
   WeChatMsg:
     runs-on: ubuntu-latest
@@ -50,23 +35,8 @@ jobs:
           git merge upstream/master
           git push origin master
 
-  techxuexi-js:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Merge upstream
-        run: |
-          git config --global user.name 'MXJNZ6'
-          git config --global user.email 'MXJNZ6'
-          git config --global credential.helper store
-          git clone https://${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}@github.com/MXJNZ6/techxuexi-js.git tmp
-          cd tmp
-          git remote add upstream https://${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}@github.com/TechXueXi/techxuexi-js.git
-          git fetch upstream
-          git merge upstream/main
-          git push origin main
-
   over:
-    needs: [lede,freenom,WeChatMsg,techxuexi-js]
+    needs: [lede,WeChatMsg]
     runs-on: ubuntu-latest
     steps:
       - name: Delete workflow runs
