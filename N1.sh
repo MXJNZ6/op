@@ -33,6 +33,7 @@ rm -rf package/custom; mkdir package/custom
 # 删除包
 rm -rf feeds/packages/multimedia/UnblockNeteaseMusic
 rm -rf feeds/luci/applications/luci-app-unblockmusic
+rm -rf feeds/luci/applications/luci-app-unblockneteasemusic
 rm -rf feeds/luci/applications/luci-app-openclash
 rm -rf feeds/packages/multimedia/UnblockNeteaseMusic-Go
 
