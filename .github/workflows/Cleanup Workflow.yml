@@ -1,0 +1,24 @@
+name: Cleanup Workflow Runs Monthly
+
+on:
+  schedule:
+    # 每月1号凌晨1点运行
+    - cron: '0 1 1 * *'
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cleanup workflow runs
+        uses: actions/delete-workflow-runs@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          keep-minimum-runs: 3  # 每个工作流至少保留3次运行（2成功+1失败）
+          keep-successful-runs: 2  # 保留最近2次成功运行
+          keep-failed-runs: 1  # 保留最近1次失败运行
+          delete-running-runs: false  # 不删除正在运行的
+          dry-run: false  # 设为true可先测试不实际删除
