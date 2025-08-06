@@ -168,4 +168,4 @@ jobs:
         curl -sSf -X POST \
           "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
           -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-          -d text="🛠️ OpenWrt编译成功！%0A%0A▫️ 版本: ${{ env.FILE_NAME }}%0A▫️ 时间: ${{ env.DATE }}%0A▫️ 镜像: $(basename "$LATEST_IMG")%0A▫️ 配置: ${{ env.CONFIG_FILE }}%0A%0A⬇️ 下载: ${{ github.server_url }}/${{ github.repository }}/releases/latest"
+          -d text="🛠️ OpenWrt编译成功！%0A%0A▫️ 版本: immortalwrt_${{ env.FILE_NAME }}%0A▫️ 时间: ${{ env.DATE }}%0A▫️ 镜像: immortalwrt-x86-64-generic-squashfs-combined%0A▫️ 配置: ${{ env.CONFIG_FILE }}%0A%0A⬇️ 下载: https://github.com/MXJNZ6/op/releases/tag/immortalwrt-latest"
