@@ -18,6 +18,7 @@ git clone https://github.com/peditx/luci-theme-peditx.git  package/luci-theme-pe
 git clone https://github.com/sirpdboy/luci-app-advancedplus.git  package/luci-app-advancedplus
 git clone https://github.com/lwb1978/openwrt-gecoosac package/openwrt-gecoosac
 echo "src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git;main" >> "feeds.conf.default"
+# echo "src-git momo https://github.com/nikkinikki-org/OpenWrt-momo.git;main" >> "feeds.conf.default"
 # Update feeds
 ./scripts/feeds update -a
 ./scripts/feeds install -a
