@@ -4,7 +4,7 @@ on:
   repository_dispatch:
   workflow_dispatch:
   schedule:
-   - cron: 0 23 5 * ?
+   - cron: 0 23 5 * *
 
 env:
   REPO_URL: https://github.com/immortalwrt/immortalwrt
@@ -15,6 +15,7 @@ env:
   UPLOAD_RELEASE: true
   FILE_NAME: X86
   TZ: Asia/Shanghai
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build:
@@ -29,10 +30,9 @@ jobs:
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
-        sudo -E rm -rf /usr/share/dotnet /etc/mysql /etc/php /etc/apt/sources.list.d /usr/local/lib/android
         sudo -E apt-mark hold grub-efi-amd64-signed
         sudo -E apt update
-        sudo -E apt -y purge azure-cli* docker* ghc* zulu* llvm* firefox google* dotnet* powershell* openjdk* mysql* php* mongodb* dotnet* snap*
+        sudo -E apt -y purge azure-cli* docker* ghc* zulu* llvm* firefox google* dotnet* powershell* openjdk* mysql* php* mongodb* snap*
         sudo -E apt -y full-upgrade
         sudo -E apt -y install ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache clang cmake cpio curl device-tree-compiler flex gawk gcc-multilib g++-multilib gettext genisoimage git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev libssl-dev libtool llvm lrzsz msmtp ninja-build p7zip p7zip-full patch pkgconf python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
         sudo -E systemctl daemon-reload
@@ -163,8 +163,7 @@ jobs:
     - name: TG notification
       if: success()
       run: |
-        LATEST_IMG=$(ls -t ${{ env.FIRMWARE }}/*.img.gz | head -1)
         curl -sSf -X POST \
           "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
           -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-          -d text="🛠️ OpenWrt编译成功！%0A%0A▫️ 版本: immortalwrt_${{ env.FILE_NAME }}%0A▫️ 时间: ${{ env.DATE }}%0A▫️ 镜像: immortalwrt-x86-64-generic-squashfs-combined%0A▫️ 配置: ${{ env.CONFIG_FILE }}%0A%0A⬇️ 下载: https://github.com/MXJNZ6/op/releases/tag/immortalwrt-latest"
+          -d text="🛠️ OpenWrt 编译成功！%0A%0A▫️ 版本: immortalwrt_${{ env.FILE_NAME }}%0A▫️ 时间: ${{ env.DATE }}%0A▫️ 下载: https://github.com/${{ github.repository }}/releases/tag/immortalwrt-latest"
