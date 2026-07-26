@@ -16,6 +16,7 @@ echo "========================="
 git clone -b js https://github.com/sirpdboy/luci-theme-kucat.git  package/luci-theme-kucat
 git clone https://github.com/sirpdboy/luci-app-advancedplus.git  package/luci-app-advancedplus
 git clone https://github.com/lwb1978/openwrt-gecoosac package/openwrt-gecoosac
+git clone https://github.com/Tokisaki-Galaxy/luci-app-tailscale-community.git package/tailscale
 # git clone https://github.com/Thaolga/openwrt-nekobox  package/openwrt-nekobox
 echo "src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git;main" >> "feeds.conf.default"
 # echo "src-git momo https://github.com/nikkinikki-org/OpenWrt-momo.git;main" >> "feeds.conf.default"
