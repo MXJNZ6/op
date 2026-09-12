@@ -13,8 +13,8 @@ echo "开始 DIY 配置……"
 echo "========================="
 
 
-git clone https://github.com/sirpdboy/luci-theme-kucat.git
-git clone https://github.com/sirpdboy/luci-app-kucat-config.git
+git clone https://github.com/sirpdboy/luci-theme-kucat.git package/luci-theme-kucat
+git clone https://github.com/sirpdboy/luci-app-kucat-config.git package/luci-app-kucat-config
 git clone https://github.com/eamonxg/luci-theme-aurora.git package/luci-theme-aurora
 git clone https://github.com/sirpdboy/luci-app-advancedplus.git  package/luci-app-advancedplus
 git clone https://github.com/lwb1978/openwrt-gecoosac package/openwrt-gecoosac
