@@ -17,7 +17,7 @@ git clone https://github.com/sirpdboy/luci-theme-kucat.git package/luci-theme-ku
 git clone https://github.com/sirpdboy/luci-app-kucat-config.git package/luci-app-kucat-config
 git clone https://github.com/eamonxg/luci-theme-aurora.git package/luci-theme-aurora
 git clone https://github.com/sirpdboy/luci-app-advancedplus.git  package/luci-app-advancedplus
-git clone https://github.com/lwb1978/openwrt-gecoosac package/openwrt-gecoosac
+git clone --depth=1 https://github.com/laipeng668/luci-app-gecoosac package/luci-app-gecoosac
 git clone https://github.com/Tokisaki-Galaxy/luci-app-tailscale-community.git package/tailscale
 # git clone https://github.com/Thaolga/openwrt-nekobox  package/openwrt-nekobox
 echo "src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git;main" >> "feeds.conf.default"
