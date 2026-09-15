@@ -8,7 +8,7 @@ on:
 
 env:
   REPO_URL: https://github.com/immortalwrt/immortalwrt
-  REPO_BRANCH: v23.05.4
+  REPO_BRANCH: openwrt-24.10
   CONFIG_FILE: N1.config
   DIY_SH: N1.sh
   UPLOAD_FIRMWARE: true
