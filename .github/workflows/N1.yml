@@ -4,7 +4,7 @@ on:
   repository_dispatch:
   workflow_dispatch:
   schedule:
-   - cron: 0 23 5 * ?
+   - cron: 0 23 5 * *
 
 env:
   REPO_URL: https://github.com/immortalwrt/immortalwrt
@@ -22,7 +22,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v6
 
     - name: Check server configuration
       run: |
@@ -48,7 +48,7 @@ jobs:
         sudo -E apt update
         sudo -E apt -y purge azure-cli* docker* ghc* zulu* llvm* firefox google* dotnet* powershell* openjdk* mysql* php* mongodb* dotnet* snap*
         sudo -E apt -y full-upgrade
-        sudo -E apt -y install ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache clang cmake cpio curl device-tree-compiler flex gawk gcc-multilib g++-multilib gettext genisoimage git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev libssl-dev libtool llvm lrzsz msmtp ninja-build p7zip p7zip-full patch pkgconf python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
+        sudo -E apt -y install ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache clang cmake cpio curl device-tree-compiler flex gawk gcc-multilib g++-multilib gperf haskell-platform imagemagick lib32gcc-s1 libc6-dev-i386 libgfi-dev libgmp3-dev libmpc-dev libmpfr-dev libncurses5-dev libssl-dev libtool linux-headers-generic libelf-dev libkrb5-dev mailutils mtd-utils ncurses-term node-uglify npm ntp openssl pahole pkgconf python3 python3-dev python3-distutils qemu-utils rsync ruby ruby-dev scons squashfstools ssh-keyscan subversion swig texinfo uglifyjs unzip upx-ucl urandom uuid-dev vala wget whiptail xsltproc zlib1g-dev zip zstd
         sudo -E systemctl daemon-reload
         sudo -E apt -y autoremove --purge
         sudo -E apt clean
@@ -113,7 +113,12 @@ jobs:
       id: organize
       if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
-        cd $GITHUB_WORKSPACE/openwrt/bin/targets/*/*
+        TARGET_DIR=$(find "$GITHUB_WORKSPACE/openwrt/bin/targets" -type f -name "*" | grep -E "(\.bin|\.img|\.tar|\.gz)" | head -1 | xargs dirname)
+        if [ -z "$TARGET_DIR" ] || [ ! -d "$TARGET_DIR" ]; then
+          TARGET_DIR="$GITHUB_WORKSPACE/openwrt/bin/targets/*/*"
+        fi
+        
+        cd "$TARGET_DIR" || exit 1
         sudo cp $GITHUB_WORKSPACE/openwrt/.config $PWD/${{ env.FILE_NAME }}.config
         rm -rf packages
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
@@ -124,7 +129,7 @@ jobs:
       run: df -hT
 
     - name: Upload firmware directory
-      uses: actions/upload-artifact@main
+      uses: actions/upload-artifact@v7
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
         name: OpenWrt_${{ env.FILE_NAME }}_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
@@ -133,6 +138,7 @@ jobs:
     - name: Create release
       id: release
       uses: ncipollo/release-action@v1
+      if: env.UPLOAD_RELEASE == 'true' && steps.organize.outputs.status == 'success' && !cancelled()
       with:
         name: R${{ env.DATE }} for ${{ env.FILE_NAME }}
         allowUpdates: true
@@ -143,9 +149,6 @@ jobs:
           This is OpenWrt firmware for ${{ env.FILE_NAME }}
         artifacts: ${{ env.FIRMWARE }}/*
 
-#  over:
-#    needs: [build]
-#    runs-on: ubuntu-20.04
-#    steps:
-    - name: TG notification #TG推送
+    - name: TG notification
+      if: env.UPLOAD_RELEASE == 'true' && steps.release.outcome == 'success' && !cancelled()
       run: curl "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=N1固件编译完成"
