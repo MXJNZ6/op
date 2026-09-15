@@ -13,6 +13,9 @@
 echo "开始 DIY 配置……"
 echo "========================="
 
+echo "src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git;main" >> "feeds.conf.default"
+echo "src-git momo https://github.com/nikkinikki-org/OpenWrt-momo.git;main" >> "feeds.conf.default"
+
 # Update feeds
 ./scripts/feeds update -a
 
@@ -20,14 +23,14 @@ echo "========================="
 sed -i 's/192.168.1.1/10.10.10.254/g' package/base-files/files/bin/config_generate
 
 # 修改主机名字，把Unicorn修改成你喜欢的（不能纯数字或者使用中文）
-sed -i "/uci commit system/i\uci set system.@system[0].hostname='Unicorn'" package/lean/default-settings/files/zzz-default-settings
-sed -i "s/hostname='OpenWrt'/hostname='Unicorn'/g" ./package/base-files/files/bin/config_generate
+sed -i "s/hostname='ImmortalWrt'/hostname='Unicorn'/g" ./package/base-files/files/bin/config_generate
 
 rm -rf package/luci-app-amlogic
 git clone -b main https://github.com/ophub/luci-app-amlogic.git package/luci-app-amlogic
 git clone https://github.com/sirpdboy/luci-theme-kucat.git
 git clone https://github.com/sirpdboy/luci-app-kucat-config.git package/luci-app-kucat-config
-
+git clone https://github.com/eamonxg/luci-theme-aurora.git package/luci-theme-aurora
+git clone https://github.com/Tokisaki-Galaxy/luci-app-tailscale-community.git package/tailscale
 
 ./scripts/feeds install -a
 ./scripts/feeds install -f luci-app-amlogic
