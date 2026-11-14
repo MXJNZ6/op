@@ -14,6 +14,7 @@ echo "========================="
 
 
 git clone https://github.com/sirpdboy/luci-theme-kucat.git package/luci-theme-kucat
+git clone https://github.com/mrjoechen/luci-theme-carbon.git package/luci-theme-carbon
 git clone https://github.com/sirpdboy/luci-app-kucat-config.git package/luci-app-kucat-config
 git clone https://github.com/eamonxg/luci-theme-aurora.git package/luci-theme-aurora
 git clone https://github.com/sirpdboy/luci-app-advancedplus.git  package/luci-app-advancedplus
